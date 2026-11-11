@@ -1,0 +1,225 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-soft: var(--brand-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Brand palette extracted from the All Sheba logo:
+   sky blue #2a86c2 · deep indigo #30338a · ink #111827 */
+:root {
+  --brand: #1d6fb3;
+  --brand-deep: #2e3192;
+  --brand-soft: #e8f2fa;
+
+  --background: #f7f9fc;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #1d6fb3;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f7;
+  --secondary-foreground: #1f2937;
+  --muted: #f1f4f8;
+  --muted-foreground: #5b6474;
+  --accent: #e8f2fa;
+  --accent-foreground: #17507f;
+  --destructive: #c62828;
+  --border: #e3e8ef;
+  --input: #d7dee8;
+  --ring: #2a86c2;
+
+  --success: #13795b;
+  --success-soft: #e6f4ee;
+  --warning: #a15c00;
+  --warning-soft: #fdf3e2;
+  --danger: #c62828;
+  --danger-soft: #fdecec;
+  --info: #1d6fb3;
+  --info-soft: #e8f2fa;
+
+  /* Categorical chart palette — validated (CVD + contrast) with the dataviz validator */
+  --chart-1: #2a86c2;
+  --chart-2: #c47f0a;
+  --chart-3: #5a5ec9;
+  --chart-4: #14966f;
+  --chart-5: #8a94a6;
+
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #1d6fb3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f2fa;
+  --sidebar-accent-foreground: #17507f;
+  --sidebar-border: #e3e8ef;
+  --sidebar-ring: #2a86c2;
+}
+
+.dark {
+  --brand: #4fa3dd;
+  --brand-deep: #8b8ff0;
+  --brand-soft: #14283b;
+
+  --background: #0b1120;
+  --foreground: #e5e9f0;
+  --card: #111a2c;
+  --card-foreground: #e5e9f0;
+  --popover: #111a2c;
+  --popover-foreground: #e5e9f0;
+  --primary: #4fa3dd;
+  --primary-foreground: #06121f;
+  --secondary: #1b2539;
+  --secondary-foreground: #e5e9f0;
+  --muted: #18223a;
+  --muted-foreground: #98a3b8;
+  --accent: #16314a;
+  --accent-foreground: #cfe6f7;
+  --destructive: #f07171;
+  --border: #233049;
+  --input: #2a3854;
+  --ring: #4fa3dd;
+
+  --success: #4cc9a0;
+  --success-soft: #0f2e26;
+  --warning: #f0b45a;
+  --warning-soft: #33250f;
+  --danger: #f07171;
+  --danger-soft: #3a1717;
+  --info: #4fa3dd;
+  --info-soft: #14283b;
+
+  --chart-1: #3b8fca;
+  --chart-2: #b97c12;
+  --chart-3: #7a7ee0;
+  --chart-4: #2fa883;
+  --chart-5: #6b7487;
+
+  --sidebar: #0e1626;
+  --sidebar-foreground: #dbe2ec;
+  --sidebar-primary: #4fa3dd;
+  --sidebar-primary-foreground: #06121f;
+  --sidebar-accent: #16314a;
+  --sidebar-accent-foreground: #cfe6f7;
+  --sidebar-border: #1e2a40;
+  --sidebar-ring: #4fa3dd;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Tabular numbers everywhere numbers are compared in columns */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Print engine                                                         */
+/* ------------------------------------------------------------------ */
+@media print {
+  @page {
+    margin: 12mm 10mm 14mm;
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 8pt;
+      color: #5b6474;
+    }
+  }
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-root {
+    box-shadow: none !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  .print-root table {
+    page-break-inside: auto;
+  }
+  .print-root thead {
+    display: table-header-group;
+  }
+  .print-root tfoot {
+    display: table-footer-group;
+  }
+  .print-root tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}
