@@ -1,3 +1,5 @@
+import { SUPABASE_URL } from "@/lib/supabase/env";
+
 export function formatMoney(n: number | string | null | undefined, currency = "BDT"): string {
   const v = Number(n ?? 0);
   const formatted = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -20,7 +22,7 @@ export function initials(name: string): string {
 
 export function publicStorageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const base = SUPABASE_URL;
   if (!base) return null;
   return `${base}/storage/v1/object/public/public-assets/${path}`;
 }

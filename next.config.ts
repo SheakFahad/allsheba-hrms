@@ -2,9 +2,7 @@ import type { NextConfig } from "next";
 
 const supabaseHost = (() => {
   try {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-      : undefined;
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mcenelqeuaffxqvszjph.supabase.co").hostname;
   } catch {
     return undefined;
   }
