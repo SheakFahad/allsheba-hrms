@@ -34,8 +34,12 @@ Next.js 16.4.6 (App Router, `src/proxy.ts` replaces middleware) · React 19.3 ·
 - Weekly off default: Friday. Entry operators: same-day entry/edit by default (configurable backdate/edit days).
 - Personal details, salary, documents, payroll, audit logs are admin-only at the RLS level.
 
-## Next steps (require the owner)
-1. Create a Supabase project and apply migrations (docs/SETUP.md).
-2. Fill `.env.local` and run `npm run provision`.
-3. Sign in, verify end-to-end with real data.
-4. Approve GitHub push + Vercel deployment (docs/DEPLOYMENT.md).
+## Deployment (2026-11-11)
+- Supabase project `mcenelqeuaffxqvszjph` — schema applied via `supabase/setup.sql`, RLS verified from outside.
+- Accounts `admin` (admin) and `user` (entry) created; both must change password at first sign-in.
+- GitHub: https://github.com/SheakFahad/allsheba-hrms (private) · Vercel: https://allsheba-hrms.vercel.app (live, owner confirmed).
+
+## Remaining owner actions
+1. Supabase → Authentication → Email: disable "Allow new users to sign up".
+2. Supabase → Authentication → URL Configuration: Site URL = https://allsheba-hrms.vercel.app
+3. Vercel env: add `CRON_SECRET` (automatic closing) and `SUPABASE_SERVICE_ROLE_KEY` (in-app Add user / Reset password), then redeploy.
