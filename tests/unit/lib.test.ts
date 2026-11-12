@@ -99,3 +99,21 @@ describe("safety helpers", () => {
     expect(friendlyDbError("new row violates row-level security policy")).toMatch(/permission/);
   });
 });
+
+describe("form → server validation round trip", () => {
+  it("accepts an employee with only the required fields (client-transformed nulls re-parsed on the server)", async () => {
+    const { employeeSchema, salarySchema } = await import("@/lib/validation");
+    const raw = {
+      full_name: "Rahim Uddin", phone: "", email: "", address: "", date_of_birth: "", national_id: "",
+      designation_id: "", department_id: "", shift_id: "", joining_date: "2026-11-12",
+      employment_type: "full_time", status: "active", emergency_contact_name: "", emergency_contact_phone: "",
+      emergency_contact_relation: "", notes: "", photo_path: "",
+    };
+    const client = employeeSchema.parse(raw);        // what react-hook-form submits
+    const server = employeeSchema.safeParse(client); // what the server action re-validates
+    expect(server.success).toBe(true);
+    expect(server.data?.phone).toBeNull();
+    const salary = salarySchema.parse({ employee_id: "5842edc9-1633-4e65-83a8-a69b5ab66d9a", effective_from: "2026-11-12", basic_salary: 1, allowances: 0, notes: "" });
+    expect(salarySchema.safeParse(salary).success).toBe(true);
+  });
+});

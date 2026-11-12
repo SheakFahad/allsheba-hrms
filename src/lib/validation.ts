@@ -5,11 +5,12 @@ import {
 
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date");
 export const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, "Enter a valid time");
-export const optionalHHMM = z.union([hhmm, z.literal("")]).optional().transform((v) => (v ? v : null));
+export const optionalHHMM = z.union([hhmm, z.literal(""), z.null()]).optional().transform((v) => (v ? v : null));
 export const uuid = z.uuid("Invalid identifier");
 const trimmed = (max: number) => z.string().trim().max(max);
 export const optionalText = (max: number) =>
-  trimmed(max).optional().transform((v) => (v ? v : null));
+  // Accepts "", null or undefined as "not provided" (forms may send already-transformed nulls).
+  trimmed(max).nullable().optional().transform((v) => (v ? v : null));
 
 export const passwordSchema = z
   .string()
@@ -50,6 +51,7 @@ export const employeeSchema = z.object({
     .string()
     .trim()
     .max(20)
+    .nullable()
     .optional()
     .transform((v) => (v ? v : null))
     .refine((v) => v === null || /^[0-9+() -]{6,20}$/.test(v), "Enter a valid phone number"),
@@ -57,15 +59,16 @@ export const employeeSchema = z.object({
     .string()
     .trim()
     .max(120)
+    .nullable()
     .optional()
     .transform((v) => (v ? v : null))
     .refine((v) => v === null || z.email().safeParse(v).success, "Enter a valid email"),
   address: optionalText(500),
-  date_of_birth: z.union([isoDate, z.literal("")]).optional().transform((v) => (v ? v : null)),
+  date_of_birth: z.union([isoDate, z.literal(""), z.null()]).optional().transform((v) => (v ? v : null)),
   national_id: optionalText(40),
-  designation_id: z.union([uuid, z.literal("")]).optional().transform((v) => (v ? v : null)),
-  department_id: z.union([uuid, z.literal("")]).optional().transform((v) => (v ? v : null)),
-  shift_id: z.union([uuid, z.literal("")]).optional().transform((v) => (v ? v : null)),
+  designation_id: z.union([uuid, z.literal(""), z.null()]).optional().transform((v) => (v ? v : null)),
+  department_id: z.union([uuid, z.literal(""), z.null()]).optional().transform((v) => (v ? v : null)),
+  shift_id: z.union([uuid, z.literal(""), z.null()]).optional().transform((v) => (v ? v : null)),
   joining_date: isoDate,
   employment_type: z.enum(EMPLOYMENT_TYPES),
   status: z.enum(EMPLOYMENT_STATUSES),
@@ -94,7 +97,7 @@ export const attendanceSchema = z.object({
   actual_in: optionalHHMM,
   actual_out: optionalHHMM,
   status: z.enum(ATTENDANCE_STATUSES),
-  late_reason: z.union([z.enum(LATE_REASONS), z.literal("")]).optional().transform((v) => (v ? v : null)),
+  late_reason: z.union([z.enum(LATE_REASONS), z.literal(""), z.null()]).optional().transform((v) => (v ? v : null)),
   late_reason_note: optionalText(500),
   notes: optionalText(1000),
   change_reason: optionalText(300),
