@@ -18,6 +18,7 @@ export function AdminAttendanceDialog({
   timezone,
   lateReasonRequired,
   noteRequiredForOther,
+  presentWithoutTime,
   date,
   today,
   employeeId,
@@ -28,6 +29,7 @@ export function AdminAttendanceDialog({
   timezone: string;
   lateReasonRequired: boolean;
   noteRequiredForOther: boolean;
+  presentWithoutTime: boolean;
   date: string;
   today: string;
   employeeId?: string;
@@ -62,7 +64,7 @@ export function AdminAttendanceDialog({
             initialDate={record?.attendance_date ?? date}
             initialEmployeeId={record?.employee_id ?? employeeId}
             initialRecord={isEdit ? record : undefined}
-            policy={{ timezone, lateReasonRequired, noteRequiredForOther, maxDate: today }}
+            policy={{ timezone, lateReasonRequired, noteRequiredForOther, presentWithoutTime, maxDate: today }}
             onSaved={() => setOpen(false)}
           />
         )}

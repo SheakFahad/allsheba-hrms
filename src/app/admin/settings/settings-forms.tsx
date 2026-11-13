@@ -85,7 +85,8 @@ export function AttendanceForm({ s }: { s: CompanySettings }) {
   const { pending, save } = useSave("attendance");
   const [v, setV] = React.useState({
     weekly_off_days: s.weekly_off_days, late_reason_required: s.late_reason_required,
-    late_note_required_for_other: s.late_note_required_for_other, entry_backdate_days: String(s.entry_backdate_days),
+    late_note_required_for_other: s.late_note_required_for_other,
+    present_without_time_default_shift: s.present_without_time_default_shift ?? true, entry_backdate_days: String(s.entry_backdate_days),
     entry_edit_days: String(s.entry_edit_days), auto_close_enabled: s.auto_close_enabled,
   });
   return (
@@ -109,6 +110,7 @@ export function AttendanceForm({ s }: { s: CompanySettings }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <Toggle label="Late reason is mandatory" hint="Operators must choose a reason for every late arrival." checked={v.late_reason_required} onChange={(c) => setV({ ...v, late_reason_required: c })} />
             <Toggle label="Explanation required for “Other”" checked={v.late_note_required_for_other} onChange={(c) => setV({ ...v, late_note_required_for_other: c })} />
+            <Toggle label="“Present” without in/out time" hint="For employees on the default shift: selecting Present is enough. No times are invented; Late and Half Day still need the real in-time." checked={v.present_without_time_default_shift} onChange={(c) => setV({ ...v, present_without_time_default_shift: c })} />
             <Toggle label="Automatic attendance closing" hint="Daily cron closes the previous day (marks absent / leave / holiday / weekly off)." checked={v.auto_close_enabled} onChange={(c) => setV({ ...v, auto_close_enabled: c })} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

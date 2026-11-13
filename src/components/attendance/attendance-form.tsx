@@ -25,6 +25,8 @@ interface Policy {
   timezone: string;
   lateReasonRequired: boolean;
   noteRequiredForOther: boolean;
+  /** "Present" may be saved without clock times for employees on the default shift. */
+  presentWithoutTime?: boolean;
   minDate?: string;
   maxDate: string;
 }
@@ -165,6 +167,9 @@ export function AttendanceForm({
     setV((s) => ({ ...s, [k]: e.target.value }));
 
   const needsTimes = calc.requiresTimes;
+  const onDefaultShift = !!employee && (!employee.shiftId || !!shifts.find((s) => s.id === employee.shiftId)?.is_default);
+  // In-time is optional only for "Present" on the default shift when the policy allows it.
+  const inTimeOptional = !!policy.presentWithoutTime && onDefaultShift && status === "present";
   // Out-time earlier than in-time is almost always AM chosen instead of PM.
   const outBeforeIn = !!v.actual_in && !!v.actual_out && v.actual_out <= v.actual_in;
   const pmSuggestion = (() => {
@@ -181,7 +186,7 @@ export function AttendanceForm({
     const e: Record<string, string> = {};
     if (!employeeId) e.employee = "Select an employee";
     if (!date) e.date = "Select a date";
-    if (needsTimes && !v.actual_in) e.actual_in = "Enter the actual in-time";
+    if (needsTimes && !v.actual_in && !inTimeOptional) e.actual_in = "Enter the actual in-time";
     if (v.actual_in && v.actual_out && v.actual_out <= v.actual_in) e.actual_out = pmSuggestion
       ? `Out-time is before in-time. Did you mean ${formatTime12(pmSuggestion)}?`
       : "Out-time must be after in-time";
@@ -311,7 +316,13 @@ export function AttendanceForm({
               <Field label="Scheduled in" htmlFor="sched_in">
                 <Input id="sched_in" type="time" className="h-10" value={v.scheduled_in} onChange={set("scheduled_in")} />
               </Field>
-              <Field label="Actual in" htmlFor="actual_in" required error={errors.actual_in}>
+              <Field
+                label="Actual in"
+                htmlFor="actual_in"
+                required={!inTimeOptional}
+                error={errors.actual_in}
+                hint={inTimeOptional ? "Optional — leave empty to mark Present without times." : undefined}
+              >
                 <div className="flex gap-2">
                   <Input id="actual_in" type="time" className="h-10" value={v.actual_in} onChange={set("actual_in")} aria-invalid={!!errors.actual_in} />
                   {nowBtn("actual_in")}

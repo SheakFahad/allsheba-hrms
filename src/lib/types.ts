@@ -70,6 +70,7 @@ export interface CompanySettings {
   weekly_off_days: number[];
   late_reason_required: boolean;
   late_note_required_for_other: boolean;
+  present_without_time_default_shift: boolean;
   entry_backdate_days: number;
   entry_edit_days: number;
   auto_close_enabled: boolean;

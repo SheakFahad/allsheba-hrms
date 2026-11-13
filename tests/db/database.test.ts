@@ -312,3 +312,40 @@ describe("audit & profiles", () => {
     expect(n).toBe(2);
   });
 });
+
+describe("present without clock times (default shift policy)", () => {
+  it("allows Present with no times for default-shift employees and stores no invented times", async () => {
+    const d = await daysAgo(6);
+    await asUser(db, admin, async () => {
+      const r = await db.query<{ status: string; actual_in: string | null; late_minutes: number; work_minutes: number }>(
+        "insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present') returning status, actual_in, late_minutes, work_minutes",
+        [empB, d],
+      );
+      expect(r.rows[0]).toEqual({ status: "present", actual_in: null, late_minutes: 0, work_minutes: 0 });
+    });
+  });
+
+  it("still requires the in-time for Late, and for everyone when the policy is off", async () => {
+    await asUser(db, admin, async () => {
+      await expect(
+        db.query("insert into attendance (employee_id, attendance_date, status, late_reason) values ($1, $2, 'late', 'traffic_jam')", [empB, await daysAgo(7)]),
+      ).rejects.toThrow(/in-time is required/);
+      await db.query("update company_settings set present_without_time_default_shift = false where id = 1");
+      await expect(
+        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(8)]),
+      ).rejects.toThrow(/in-time is required/);
+      await db.query("update company_settings set present_without_time_default_shift = true where id = 1");
+    });
+  });
+
+  it("does not apply to employees on a non-default shift", async () => {
+    await asUser(db, admin, async () => {
+      const sid = (await db.query<{ id: string }>("insert into shifts (name, start_time, end_time) values ('Morning', '08:00', '17:00') returning id")).rows[0].id;
+      await db.query("update employees set shift_id = $1 where id = $2", [sid, empB]);
+      await expect(
+        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(9)]),
+      ).rejects.toThrow(/in-time is required/);
+      await db.query("update employees set shift_id = null where id = $1", [empB]);
+    });
+  });
+});
