@@ -9,7 +9,8 @@ export function formatCell(value: Cell, format: CellFormat = "text"): string {
     case "date":
       return formatDate(String(value));
     case "time":
-      return formatTime12(String(value));
+      // Non-time labels (e.g. "Flexible") are shown as-is.
+      return /^\d{1,2}:\d{2}/.test(String(value)) ? formatTime12(String(value)) : String(value);
     case "minutes":
       return Number(value) ? `${value} min` : "—";
     case "duration":

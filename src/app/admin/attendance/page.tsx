@@ -33,7 +33,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
   const dialogProps = {
     employees: options, shifts, timezone: settings.timezone, today, date,
     lateReasonRequired: settings.late_reason_required, noteRequiredForOther: settings.late_note_required_for_other,
-    presentWithoutTime: settings.present_without_time_default_shift ?? true,
+    flexibleSchedule: settings.flexible_schedule_unassigned ?? true,
   };
 
   return (
@@ -93,7 +93,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
                         </span>
                       </span>
                     </TableCell>
-                    <TableCell className="tabular text-muted-foreground">{formatTime12(r?.scheduled_in ?? e.shifts?.start_time)}</TableCell>
+                    <TableCell className="tabular text-muted-foreground">{r?.is_flexible || (!r && !e.shift_id && (settings.flexible_schedule_unassigned ?? true)) ? "Flexible" : formatTime12(r?.scheduled_in ?? e.shifts?.start_time)}</TableCell>
                     <TableCell className="tabular font-medium">{formatTime12(r?.actual_in)}</TableCell>
                     <TableCell className="tabular text-right">{r?.late_minutes ? <span className="font-semibold text-warning">{r.late_minutes} min</span> : "—"}</TableCell>
                     <TableCell>{r?.late_reason ? LATE_REASON_LABELS[r.late_reason] : "—"}</TableCell>

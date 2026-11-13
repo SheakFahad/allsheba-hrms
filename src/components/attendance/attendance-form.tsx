@@ -25,8 +25,8 @@ interface Policy {
   timezone: string;
   lateReasonRequired: boolean;
   noteRequiredForOther: boolean;
-  /** "Present" may be saved without clock times for employees on the default shift. */
-  presentWithoutTime?: boolean;
+  /** Employees with no shift set have a flexible schedule (no office hours, no late/early). */
+  flexibleSchedule?: boolean;
   minDate?: string;
   maxDate: string;
 }
@@ -145,8 +145,12 @@ export function AttendanceForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
 
+  // Flexible schedule: no shift set on the employee (or the saved record is flexible).
+  // No scheduled times, no late / early departure; actual in/out are optional.
+  const flexible = existing ? !!existing.is_flexible : !!policy.flexibleSchedule && !!employee && !employee.shiftId;
+
   // Status follows the clock times automatically until the operator picks one explicitly.
-  const autoStatus = v.actual_in
+  const autoStatus = flexible ? (v.status === "late" ? "present" : v.status) : v.actual_in
     ? calculateAttendance({
         scheduledIn: v.scheduled_in || schedule.in, scheduledOut: v.scheduled_out || schedule.out,
         actualIn: v.actual_in, actualOut: v.actual_out || null, graceMinutes: grace, status: "present",
@@ -154,7 +158,7 @@ export function AttendanceForm({
     : v.status;
   const status: AttendanceStatus = statusTouched ? v.status : autoStatus;
 
-  const calc = calculateAttendance({
+  const baseCalc = calculateAttendance({
     scheduledIn: v.scheduled_in || schedule.in,
     scheduledOut: v.scheduled_out || schedule.out,
     actualIn: v.actual_in || null,
@@ -162,16 +166,21 @@ export function AttendanceForm({
     graceMinutes: grace,
     status,
   });
+  // Flexible: keep worked hours only (mirrors the database trigger).
+  const calc = flexible
+    ? {
+        ...baseCalc,
+        status: baseCalc.status === "late" ? ("present" as const) : baseCalc.status,
+        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, isLate: false,
+      }
+    : baseCalc;
 
   const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setV((s) => ({ ...s, [k]: e.target.value }));
 
   const needsTimes = calc.requiresTimes;
-  // Only employees with NO shift set ("Default shift" in the employee form) qualify;
-  // an explicitly assigned shift — even the 10:00–19:00 General Shift — always needs times.
-  const onDefaultShift = !!employee && !employee.shiftId;
-  // In-time is optional only for "Present" on the default shift when the policy allows it.
-  const inTimeOptional = !!policy.presentWithoutTime && onDefaultShift && status === "present";
+  // In-time is optional only on a flexible schedule.
+  const inTimeOptional = flexible;
   // Out-time earlier than in-time is almost always AM chosen instead of PM.
   const outBeforeIn = !!v.actual_in && !!v.actual_out && v.actual_out <= v.actual_in;
   const pmSuggestion = (() => {
@@ -209,8 +218,8 @@ export function AttendanceForm({
         id: v.id || undefined,
         employee_id: employeeId,
         attendance_date: date,
-        scheduled_in: v.scheduled_in || schedule.in,
-        scheduled_out: v.scheduled_out || schedule.out,
+        scheduled_in: flexible ? "" : v.scheduled_in || schedule.in,
+        scheduled_out: flexible ? "" : v.scheduled_out || schedule.out,
         actual_in: needsTimes ? v.actual_in : "",
         actual_out: needsTimes ? v.actual_out : "",
         status,
@@ -273,7 +282,7 @@ export function AttendanceForm({
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg bg-muted/60 px-4 py-2.5 text-sm">
           <span><span className="text-muted-foreground">Employee ID:</span> <span className="tabular font-semibold">{employee.code}</span></span>
           {employee.department && <span><span className="text-muted-foreground">Department:</span> {employee.department}</span>}
-          <span><span className="text-muted-foreground">Schedule:</span> {formatTime12(schedule.in)} – {formatTime12(schedule.out)}{grace ? ` (grace ${grace} min)` : ""}</span>
+          <span><span className="text-muted-foreground">Schedule:</span> {flexible ? "Flexible (no office hours)" : <>{formatTime12(schedule.in)} – {formatTime12(schedule.out)}{grace ? ` (grace ${grace} min)` : ""}</>}</span>
           {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
         </div>
       )}
@@ -301,7 +310,7 @@ export function AttendanceForm({
                 setV((s) => ({ ...s, status: e.target.value as AttendanceStatus }));
               }}
             >
-              {ATTENDANCE_STATUSES.map((s) => <option key={s} value={s}>{ATTENDANCE_STATUS_LABELS[s]}</option>)}
+              {ATTENDANCE_STATUSES.filter((s) => !(flexible && s === "late")).map((s) => <option key={s} value={s}>{ATTENDANCE_STATUS_LABELS[s]}</option>)}
             </NativeSelect>
           </Field>
           {statusTouched && v.actual_in && mode === "entry" && !existing && (
@@ -315,15 +324,17 @@ export function AttendanceForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-4 rounded-xl border p-4">
               <p className="flex items-center gap-2 text-sm font-semibold"><Clock className="size-4 text-brand" /> Arrival</p>
-              <Field label="Scheduled in" htmlFor="sched_in">
-                <Input id="sched_in" type="time" className="h-10" value={v.scheduled_in} onChange={set("scheduled_in")} />
-              </Field>
+              {!flexible && (
+                <Field label="Scheduled in" htmlFor="sched_in">
+                  <Input id="sched_in" type="time" className="h-10" value={v.scheduled_in} onChange={set("scheduled_in")} />
+                </Field>
+              )}
               <Field
                 label="Actual in"
                 htmlFor="actual_in"
                 required={!inTimeOptional}
                 error={errors.actual_in}
-                hint={inTimeOptional ? "Optional — leave empty to mark Present without times." : undefined}
+                hint={inTimeOptional ? "Optional — flexible schedule. Leave empty to mark Present without times." : undefined}
               >
                 <div className="flex gap-2">
                   <Input id="actual_in" type="time" className="h-10" value={v.actual_in} onChange={set("actual_in")} aria-invalid={!!errors.actual_in} />
@@ -333,9 +344,11 @@ export function AttendanceForm({
             </div>
             <div className="grid gap-4 rounded-xl border p-4">
               <p className="flex items-center gap-2 text-sm font-semibold"><LogOut className="size-4 text-brand" /> Departure</p>
-              <Field label="Scheduled out" htmlFor="sched_out">
-                <Input id="sched_out" type="time" className="h-10" value={v.scheduled_out} onChange={set("scheduled_out")} />
-              </Field>
+              {!flexible && (
+                <Field label="Scheduled out" htmlFor="sched_out">
+                  <Input id="sched_out" type="time" className="h-10" value={v.scheduled_out} onChange={set("scheduled_out")} />
+                </Field>
+              )}
               <Field label="Actual out" htmlFor="actual_out" error={errors.actual_out} hint="Can be added later in the day.">
                 <div className="flex gap-2">
                   <Input id="actual_out" type="time" className="h-10" value={v.actual_out} onChange={set("actual_out")} aria-invalid={!!errors.actual_out} />
@@ -372,7 +385,7 @@ export function AttendanceForm({
 
         {needsTimes && v.actual_in && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Metric label="Late" value={calc.lateMinutes ? `${calc.lateMinutes} min` : "On time"} tone={calc.lateMinutes ? "warning" : "success"} />
+            <Metric label="Late" value={flexible ? "Flexible" : calc.lateMinutes ? `${calc.lateMinutes} min` : "On time"} tone={flexible ? "neutral" : calc.lateMinutes ? "warning" : "success"} />
             <Metric label="Early departure" value={v.actual_out && !outBeforeIn ? (calc.earlyLeaveMinutes ? `${calc.earlyLeaveMinutes} min` : "None") : "—"} tone={calc.earlyLeaveMinutes && !outBeforeIn ? "danger" : "neutral"} />
             <Metric label="Working hours" value={v.actual_out && !outBeforeIn ? formatDuration(calc.workMinutes) : "—"} tone="neutral" />
             <Metric label="Status" value={ATTENDANCE_STATUS_LABELS[calc.status]} tone={calc.status === "late" ? "warning" : "success"} />

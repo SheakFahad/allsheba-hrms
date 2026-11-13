@@ -22,11 +22,11 @@ beforeAll(async () => {
     // Make every day a working day so tests are independent of the weekday they run on.
     await db.query("update company_settings set weekly_off_days = '{}' where id = 1");
     empA = (await db.query<{ id: string }>(
-      "insert into employees (full_name, department_id, joining_date) values ('Rahim Uddin', $1, current_date - 90) returning id",
+      "insert into employees (full_name, department_id, joining_date, shift_id) values ('Rahim Uddin', $1, current_date - 90, (select id from shifts where is_default)) returning id",
       [deptId],
     )).rows[0].id;
     empB = (await db.query<{ id: string }>(
-      "insert into employees (full_name, department_id, joining_date) values ('Karim Ahmed', $1, current_date - 90) returning id",
+      "insert into employees (full_name, department_id, joining_date, shift_id) values ('Karim Ahmed', $1, current_date - 90, (select id from shifts where is_default)) returning id",
       [deptId],
     )).rows[0].id;
   });
@@ -313,50 +313,65 @@ describe("audit & profiles", () => {
   });
 });
 
-describe("present without clock times (default shift policy)", () => {
-  it("allows Present with no times for default-shift employees and stores no invented times", async () => {
-    const d = await daysAgo(6);
+describe("flexible schedule (employees with no shift set)", () => {
+  let flex = "";
+  beforeAll(async () => {
     await asUser(db, admin, async () => {
-      const r = await db.query<{ status: string; actual_in: string | null; late_minutes: number; work_minutes: number }>(
-        "insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present') returning status, actual_in, late_minutes, work_minutes",
-        [empB, d],
+      flex = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date) values ('Flexible Person', current_date - 90) returning id",
+      )).rows[0].id;
+    });
+  });
+
+  it("allows Present with no times and stores no schedule", async () => {
+    await asUser(db, entry, async () => {
+      const r = await db.query<Record<string, unknown>>(
+        "insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present') returning status, is_flexible, scheduled_in, actual_in, late_minutes, work_minutes",
+        [flex, await today()],
       );
-      expect(r.rows[0]).toEqual({ status: "present", actual_in: null, late_minutes: 0, work_minutes: 0 });
+      expect(r.rows[0]).toEqual({ status: "present", is_flexible: true, scheduled_in: null, actual_in: null, late_minutes: 0, work_minutes: 0 });
     });
   });
 
-  it("still requires the in-time for Late, and for everyone when the policy is off", async () => {
+  it("records actual in/out and worked hours but never late or early departure", async () => {
     await asUser(db, admin, async () => {
-      await expect(
-        db.query("insert into attendance (employee_id, attendance_date, status, late_reason) values ($1, $2, 'late', 'traffic_jam')", [empB, await daysAgo(7)]),
-      ).rejects.toThrow(/in-time is required/);
-      await db.query("update company_settings set present_without_time_default_shift = false where id = 1");
-      await expect(
-        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(8)]),
-      ).rejects.toThrow(/in-time is required/);
-      await db.query("update company_settings set present_without_time_default_shift = true where id = 1");
+      const r = await db.query<Record<string, unknown>>(
+        "insert into attendance (employee_id, attendance_date, actual_in, actual_out, status) values ($1, $2, '11:30', '18:00', 'late') returning status, late_minutes, early_leave_minutes, work_minutes, scheduled_out",
+        [flex, await daysAgo(11)],
+      );
+      expect(r.rows[0]).toEqual({ status: "present", late_minutes: 0, early_leave_minutes: 0, work_minutes: 390, scheduled_out: null });
     });
   });
 
-  it("does not apply when the General (default) shift is explicitly assigned", async () => {
+  it("is closed as absent like everyone else", async () => {
+    const d = await daysAgo(12);
     await asUser(db, admin, async () => {
-      const def = (await db.query<{ id: string }>("select id from shifts where is_default")).rows[0].id;
-      await db.query("update employees set shift_id = $1 where id = $2", [def, empB]);
-      await expect(
-        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(10)]),
-      ).rejects.toThrow(/in-time is required/);
-      await db.query("update employees set shift_id = null where id = $1", [empB]);
+      await db.query("select public.close_attendance($1::date)", [d]);
+      const r = await db.query<{ status: string; is_flexible: boolean }>("select status, is_flexible from attendance where employee_id = $1 and attendance_date = $2", [flex, d]);
+      expect(r.rows[0]).toEqual({ status: "absent", is_flexible: true });
     });
   });
 
-  it("does not apply to employees on a non-default shift", async () => {
+  it("does not apply when the General shift is explicitly assigned", async () => {
     await asUser(db, admin, async () => {
-      const sid = (await db.query<{ id: string }>("insert into shifts (name, start_time, end_time) values ('Morning', '08:00', '17:00') returning id")).rows[0].id;
-      await db.query("update employees set shift_id = $1 where id = $2", [sid, empB]);
       await expect(
-        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(9)]),
+        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(13)]),
       ).rejects.toThrow(/in-time is required/);
-      await db.query("update employees set shift_id = null where id = $1", [empB]);
+    });
+  });
+
+  it("uses the default schedule again when the policy is turned off", async () => {
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set flexible_schedule_unassigned = false where id = 1");
+      await expect(
+        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [flex, await daysAgo(14)]),
+      ).rejects.toThrow(/in-time is required/);
+      const r = await db.query<{ scheduled_in: string; late_minutes: number; is_flexible: boolean }>(
+        "insert into attendance (employee_id, attendance_date, actual_in, status, late_reason) values ($1, $2, '10:20', 'present', 'traffic_jam') returning scheduled_in::text, late_minutes, is_flexible",
+        [flex, await daysAgo(15)],
+      );
+      expect(r.rows[0]).toEqual({ scheduled_in: "10:00:00", late_minutes: 20, is_flexible: false });
+      await db.query("update company_settings set flexible_schedule_unassigned = true where id = 1");
     });
   });
 });

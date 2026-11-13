@@ -117,3 +117,10 @@ describe("form → server validation round trip", () => {
     expect(salarySchema.safeParse(salary).success).toBe(true);
   });
 });
+
+describe("flexible schedule display", () => {
+  it("shows non-time labels in time columns as-is", () => {
+    expect(formatCell("Flexible", "time")).toBe("Flexible");
+    expect(formatCell("18:05:00", "time")).toBe("6:05 PM");
+  });
+});

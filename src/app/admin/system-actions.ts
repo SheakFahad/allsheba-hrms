@@ -143,7 +143,7 @@ const settingsSchemas = {
     weekly_off_days: z.array(z.coerce.number().int().min(0).max(6)).max(6),
     late_reason_required: bool,
     late_note_required_for_other: bool,
-    present_without_time_default_shift: bool,
+    flexible_schedule_unassigned: bool,
     entry_backdate_days: z.coerce.number().int().min(0).max(31),
     entry_edit_days: z.coerce.number().int().min(0).max(31),
     auto_close_enabled: bool,

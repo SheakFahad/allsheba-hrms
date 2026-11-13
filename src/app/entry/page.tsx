@@ -54,7 +54,7 @@ export default async function EntryHome() {
                 timezone: settings.timezone,
                 lateReasonRequired: settings.late_reason_required,
                 noteRequiredForOther: settings.late_note_required_for_other,
-                presentWithoutTime: settings.present_without_time_default_shift ?? true,
+                flexibleSchedule: settings.flexible_schedule_unassigned ?? true,
                 minDate: addDays(today, -settings.entry_backdate_days),
                 maxDate: today,
               }}

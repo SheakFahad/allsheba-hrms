@@ -86,7 +86,7 @@ export function AttendanceForm({ s }: { s: CompanySettings }) {
   const [v, setV] = React.useState({
     weekly_off_days: s.weekly_off_days, late_reason_required: s.late_reason_required,
     late_note_required_for_other: s.late_note_required_for_other,
-    present_without_time_default_shift: s.present_without_time_default_shift ?? true, entry_backdate_days: String(s.entry_backdate_days),
+    flexible_schedule_unassigned: s.flexible_schedule_unassigned ?? true, entry_backdate_days: String(s.entry_backdate_days),
     entry_edit_days: String(s.entry_edit_days), auto_close_enabled: s.auto_close_enabled,
   });
   return (
@@ -110,7 +110,7 @@ export function AttendanceForm({ s }: { s: CompanySettings }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <Toggle label="Late reason is mandatory" hint="Operators must choose a reason for every late arrival." checked={v.late_reason_required} onChange={(c) => setV({ ...v, late_reason_required: c })} />
             <Toggle label="Explanation required for “Other”" checked={v.late_note_required_for_other} onChange={(c) => setV({ ...v, late_note_required_for_other: c })} />
-            <Toggle label="“Present” without in/out time" hint="Only for employees whose Shift is “Default shift” (not set). Employees with an assigned shift, including General Shift 10:00–7:00, always need times. No times are invented; Late and Half Day still need the real in-time." checked={v.present_without_time_default_shift} onChange={(c) => setV({ ...v, present_without_time_default_shift: c })} />
+            <Toggle label="Flexible schedule for employees without a shift" hint="Employees whose Shift is “Default shift” (not set) get no office hours: no late or early-departure calculation, and actual in/out are optional (shown as “Flexible”). Employees with an assigned shift, including General Shift 10:00–7:00, are not affected." checked={v.flexible_schedule_unassigned} onChange={(c) => setV({ ...v, flexible_schedule_unassigned: c })} />
             <Toggle label="Automatic attendance closing" hint="Daily cron closes the previous day (marks absent / leave / holiday / weekly off)." checked={v.auto_close_enabled} onChange={(c) => setV({ ...v, auto_close_enabled: c })} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

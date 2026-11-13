@@ -92,8 +92,9 @@ export const attendanceSchema = z.object({
   id: z.union([uuid, z.literal("")]).optional(),
   employee_id: uuid,
   attendance_date: isoDate,
-  scheduled_in: hhmm,
-  scheduled_out: hhmm,
+  // Null for flexible-schedule employees (no office hours).
+  scheduled_in: optionalHHMM,
+  scheduled_out: optionalHHMM,
   actual_in: optionalHHMM,
   actual_out: optionalHHMM,
   status: z.enum(ATTENDANCE_STATUSES),

@@ -70,7 +70,8 @@ export interface CompanySettings {
   weekly_off_days: number[];
   late_reason_required: boolean;
   late_note_required_for_other: boolean;
-  present_without_time_default_shift: boolean;
+  /** Employees with no shift set have no schedule (no late/early); actual times optional. */
+  flexible_schedule_unassigned: boolean;
   entry_backdate_days: number;
   entry_edit_days: number;
   auto_close_enabled: boolean;
@@ -159,9 +160,10 @@ export interface Attendance {
   employee_id: string;
   attendance_date: string;
   shift_id: string | null;
-  scheduled_in: string;
-  scheduled_out: string;
+  scheduled_in: string | null;
+  scheduled_out: string | null;
   grace_minutes: number;
+  is_flexible: boolean;
   actual_in: string | null;
   actual_out: string | null;
   status: AttendanceStatus;

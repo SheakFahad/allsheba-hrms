@@ -56,7 +56,7 @@ export function AttendanceTable({
                   <span className="tabular block text-xs text-muted-foreground">{r.employees?.employee_code}</span>
                 </TableCell>
               )}
-              <TableCell className="tabular text-muted-foreground">{formatTime12(r.scheduled_in)}</TableCell>
+              <TableCell className="tabular text-muted-foreground">{r.is_flexible ? <FlexibleTag /> : formatTime12(r.scheduled_in)}</TableCell>
               <TableCell className="tabular font-medium">{formatTime12(r.actual_in)}</TableCell>
               <TableCell className={cn("tabular text-right", r.late_minutes > 0 && "font-semibold text-warning")}>
                 {r.late_minutes > 0 ? `${r.late_minutes} min` : "—"}
@@ -69,7 +69,7 @@ export function AttendanceTable({
                   </span>
                 ) : "—"}
               </TableCell>
-              <TableCell className="tabular text-muted-foreground">{formatTime12(r.scheduled_out)}</TableCell>
+              <TableCell className="tabular text-muted-foreground">{r.is_flexible ? <FlexibleTag /> : formatTime12(r.scheduled_out)}</TableCell>
               <TableCell className="tabular font-medium">{formatTime12(r.actual_out)}</TableCell>
               <TableCell className={cn("tabular text-right", r.early_leave_minutes > 0 && "text-danger")}>
                 {r.early_leave_minutes > 0 ? `${r.early_leave_minutes} min` : "—"}
@@ -88,4 +88,8 @@ export function AttendanceTable({
       </Table>
     </div>
   );
+}
+
+function FlexibleTag() {
+  return <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Flexible</span>;
 }
