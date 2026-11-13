@@ -338,6 +338,17 @@ describe("present without clock times (default shift policy)", () => {
     });
   });
 
+  it("does not apply when the General (default) shift is explicitly assigned", async () => {
+    await asUser(db, admin, async () => {
+      const def = (await db.query<{ id: string }>("select id from shifts where is_default")).rows[0].id;
+      await db.query("update employees set shift_id = $1 where id = $2", [def, empB]);
+      await expect(
+        db.query("insert into attendance (employee_id, attendance_date, status) values ($1, $2, 'present')", [empB, await daysAgo(10)]),
+      ).rejects.toThrow(/in-time is required/);
+      await db.query("update employees set shift_id = null where id = $1", [empB]);
+    });
+  });
+
   it("does not apply to employees on a non-default shift", async () => {
     await asUser(db, admin, async () => {
       const sid = (await db.query<{ id: string }>("insert into shifts (name, start_time, end_time) values ('Morning', '08:00', '17:00') returning id")).rows[0].id;

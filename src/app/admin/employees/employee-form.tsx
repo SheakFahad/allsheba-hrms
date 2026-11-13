@@ -131,7 +131,7 @@ export function EmployeeForm({
                   {activeDesignations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </NativeSelect>
               </Field>
-              <Field label="Shift" htmlFor="shift_id" hint="Leave empty to use the default office schedule.">
+              <Field label="Shift" htmlFor="shift_id" hint="“Default shift” uses the default office hours and allows Present without in/out time (if enabled in Settings). Choose a shift to always require times.">
                 <NativeSelect id="shift_id" {...register("shift_id")}>
                   <option value="">Default shift</option>
                   {shifts.filter((s) => s.is_active).map((s) => (

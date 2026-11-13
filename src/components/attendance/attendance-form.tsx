@@ -167,7 +167,9 @@ export function AttendanceForm({
     setV((s) => ({ ...s, [k]: e.target.value }));
 
   const needsTimes = calc.requiresTimes;
-  const onDefaultShift = !!employee && (!employee.shiftId || !!shifts.find((s) => s.id === employee.shiftId)?.is_default);
+  // Only employees with NO shift set ("Default shift" in the employee form) qualify;
+  // an explicitly assigned shift — even the 10:00–19:00 General Shift — always needs times.
+  const onDefaultShift = !!employee && !employee.shiftId;
   // In-time is optional only for "Present" on the default shift when the policy allows it.
   const inTimeOptional = !!policy.presentWithoutTime && onDefaultShift && status === "present";
   // Out-time earlier than in-time is almost always AM chosen instead of PM.
