@@ -165,6 +165,15 @@ export function AttendanceForm({
     setV((s) => ({ ...s, [k]: e.target.value }));
 
   const needsTimes = calc.requiresTimes;
+  // Out-time earlier than in-time is almost always AM chosen instead of PM.
+  const outBeforeIn = !!v.actual_in && !!v.actual_out && v.actual_out <= v.actual_in;
+  const pmSuggestion = (() => {
+    if (!outBeforeIn) return null;
+    const [h, m] = v.actual_out.split(":").map(Number);
+    if (h >= 12) return null;
+    const candidate = `${String(h + 12).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return candidate > v.actual_in ? candidate : null;
+  })();
   const showLate = needsTimes && calc.isLate;
   const editingLockedForEntry = mode === "entry" && !!existing && (existing.is_locked || existing.source !== "entry");
 
@@ -173,7 +182,9 @@ export function AttendanceForm({
     if (!employeeId) e.employee = "Select an employee";
     if (!date) e.date = "Select a date";
     if (needsTimes && !v.actual_in) e.actual_in = "Enter the actual in-time";
-    if (v.actual_in && v.actual_out && v.actual_out <= v.actual_in) e.actual_out = "Out-time must be after in-time";
+    if (v.actual_in && v.actual_out && v.actual_out <= v.actual_in) e.actual_out = pmSuggestion
+      ? `Out-time is before in-time. Did you mean ${formatTime12(pmSuggestion)}?`
+      : "Out-time must be after in-time";
     if (showLate && policy.lateReasonRequired && !v.late_reason) e.late_reason = "Select a late reason";
     if (showLate && v.late_reason === "other" && policy.noteRequiredForOther && v.late_reason_note.trim().length < 3)
       e.late_reason_note = "Describe the reason";
@@ -317,6 +328,30 @@ export function AttendanceForm({
                   <Input id="actual_out" type="time" className="h-10" value={v.actual_out} onChange={set("actual_out")} aria-invalid={!!errors.actual_out} />
                   {nowBtn("actual_out")}
                 </div>
+                {pmSuggestion && !errors.actual_out && (
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-warning">
+                    Out-time is earlier than in-time ({formatTime12(v.actual_in)}).
+                    <button
+                      type="button"
+                      className="rounded bg-warning-soft px-1.5 py-0.5 underline-offset-2 hover:underline"
+                      onClick={() => setV((s) => ({ ...s, actual_out: pmSuggestion }))}
+                    >
+                      Use {formatTime12(pmSuggestion)}
+                    </button>
+                  </p>
+                )}
+                {pmSuggestion && errors.actual_out && (
+                  <button
+                    type="button"
+                    className="w-fit rounded bg-warning-soft px-2 py-1 text-xs font-medium text-warning hover:underline"
+                    onClick={() => {
+                      setV((s) => ({ ...s, actual_out: pmSuggestion }));
+                      setErrors((prev) => { const next = { ...prev }; delete next.actual_out; return next; });
+                    }}
+                  >
+                    Change to {formatTime12(pmSuggestion)}
+                  </button>
+                )}
               </Field>
             </div>
           </div>
@@ -325,8 +360,8 @@ export function AttendanceForm({
         {needsTimes && v.actual_in && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Metric label="Late" value={calc.lateMinutes ? `${calc.lateMinutes} min` : "On time"} tone={calc.lateMinutes ? "warning" : "success"} />
-            <Metric label="Early departure" value={v.actual_out ? (calc.earlyLeaveMinutes ? `${calc.earlyLeaveMinutes} min` : "None") : "—"} tone={calc.earlyLeaveMinutes ? "danger" : "neutral"} />
-            <Metric label="Working hours" value={v.actual_out ? formatDuration(calc.workMinutes) : "—"} tone="neutral" />
+            <Metric label="Early departure" value={v.actual_out && !outBeforeIn ? (calc.earlyLeaveMinutes ? `${calc.earlyLeaveMinutes} min` : "None") : "—"} tone={calc.earlyLeaveMinutes && !outBeforeIn ? "danger" : "neutral"} />
+            <Metric label="Working hours" value={v.actual_out && !outBeforeIn ? formatDuration(calc.workMinutes) : "—"} tone="neutral" />
             <Metric label="Status" value={ATTENDANCE_STATUS_LABELS[calc.status]} tone={calc.status === "late" ? "warning" : "success"} />
           </div>
         )}
