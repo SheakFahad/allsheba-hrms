@@ -7,6 +7,8 @@ import type { Attendance, Employee } from "@/lib/types";
 export interface DayRow {
   employee: Employee;
   record: Attendance | null;
+  /** The date is this employee's own weekly off day. */
+  offDay: boolean;
 }
 
 export interface DayOverview {
@@ -18,6 +20,7 @@ export interface DayOverview {
     expected: number;
     recorded: number;
     notRecorded: number;
+    weeklyOff: number;
     present: number;
     late: number;
     halfDay: number;
@@ -40,7 +43,12 @@ export async function getDayOverview(date: string): Promise<DayOverview> {
   const eligible = employees.filter(
     (e) => e.joining_date <= date && (e.status === "active" || e.status === "on_notice" || byEmp.has(e.id)),
   );
-  const rows = eligible.map((employee) => ({ employee, record: byEmp.get(employee.id) ?? null }));
+  const dow = dayOfWeek(date);
+  const rows = eligible.map((employee) => ({
+    employee,
+    record: byEmp.get(employee.id) ?? null,
+    offDay: (employee.weekly_off_days ?? settings.weekly_off_days).includes(dow),
+  }));
   const recs = rows.map((r) => r.record).filter(Boolean) as Attendance[];
   const count = (s: Attendance["status"]) => recs.filter((r) => r.status === s).length;
   return {
@@ -51,7 +59,8 @@ export async function getDayOverview(date: string): Promise<DayOverview> {
     counts: {
       expected: rows.length,
       recorded: recs.length,
-      notRecorded: rows.length - recs.length,
+      notRecorded: rows.filter((r) => !r.record && !r.offDay).length,
+      weeklyOff: rows.filter((r) => !r.record && r.offDay).length,
       present: count("present") + count("late"),
       late: count("late"),
       halfDay: count("half_day"),

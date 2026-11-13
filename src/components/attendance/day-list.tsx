@@ -11,10 +11,12 @@ export function DayList({ rows, actions }: { rows: DayRow[]; actions?: (row: Day
   if (rows.length === 0) {
     return <EmptyState icon={CalendarDays} title="No employees to show" description="Add employees from the Admin panel." />;
   }
-  const sorted = [...rows].sort((a, b) => Number(!!a.record) - Number(!!b.record) || a.employee.full_name.localeCompare(b.employee.full_name));
+  // Not recorded (working today) first, then recorded, then today's weekly-off employees.
+  const rank = (r: DayRow) => (r.record ? 1 : r.offDay ? 2 : 0);
+  const sorted = [...rows].sort((a, b) => rank(a) - rank(b) || a.employee.full_name.localeCompare(b.employee.full_name));
   return (
     <ul className="divide-y">
-      {sorted.map(({ employee: e, record: r }) => (
+      {sorted.map(({ employee: e, record: r, offDay }) => (
         <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
           <EmployeeAvatar name={e.full_name} photoUrl={publicStorageUrl(e.photo_path)} />
           <div className="min-w-0 flex-1">
@@ -26,8 +28,8 @@ export function DayList({ rows, actions }: { rows: DayRow[]; actions?: (row: Day
               {r && r.late_minutes > 0 && ` · ${r.late_minutes} min late`}
             </p>
           </div>
-          {r ? <AttendanceBadge status={r.status} /> : <ToneBadge tone="neutral">Not recorded</ToneBadge>}
-          {actions?.({ employee: e, record: r })}
+          {r ? <AttendanceBadge status={r.status} /> : offDay ? <ToneBadge tone="neutral">Weekly off</ToneBadge> : <ToneBadge tone="neutral">Not recorded</ToneBadge>}
+          {actions?.({ employee: e, record: r, offDay })}
         </li>
       ))}
     </ul>

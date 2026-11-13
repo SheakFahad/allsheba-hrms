@@ -375,3 +375,61 @@ describe("flexible schedule (employees with no shift set)", () => {
     });
   });
 });
+
+describe("per-employee weekly off days", () => {
+  let emp = "";
+  let offDow = 0;
+  beforeAll(async () => {
+    await asUser(db, admin, async () => {
+      offDow = (await db.query<{ d: number }>("select extract(dow from public.local_today() - 16)::int as d")).rows[0].d;
+      emp = (await db.query<{ id: string }>(
+        "select public.save_employee(null, $1::jsonb) as id",
+        [JSON.stringify({
+          full_name: "Weekend Person", joining_date: "2026-01-01", employment_type: "full_time", status: "active",
+          shift_id: (await db.query<{ id: string }>("select id::text from shifts where is_default")).rows[0].id,
+          weekly_off_days: [offDow], basic_salary: "31000", allowances: "0",
+        })],
+      )).rows[0].id;
+    });
+  });
+
+  it("stores the employee's own weekly off days via save_employee", async () => {
+    const r = await db.query<{ w: number[] }>("select weekly_off_days as w from employees where id = $1", [emp]);
+    expect(r.rows[0].w).toEqual([offDow]);
+  });
+
+  it("closing marks the employee's own off day as Weekly Off (company default has none)", async () => {
+    const d = await daysAgo(16);
+    await asUser(db, admin, async () => {
+      await db.query("select public.close_attendance($1::date)", [d]);
+      const r = await db.query<{ status: string }>("select status from attendance where employee_id = $1 and attendance_date = $2", [emp, d]);
+      expect(r.rows[0].status).toBe("weekly_off");
+      const other = await db.query<{ status: string }>("select status from attendance where employee_id = $1 and attendance_date = $2", [empA, d]);
+      expect(other.rows[0].status).toBe("absent");
+    });
+  });
+
+  it("excludes the employee's off days when counting leave days", async () => {
+    await asUser(db, admin, async () => {
+      const r = await db.query<{ days: string }>(
+        "insert into leave_requests (employee_id, leave_type_id, start_date, end_date) select $1, id, $2, $3 from leave_types where code = 'UL' returning days",
+        [emp, await daysAgo(30), await daysAgo(24)],
+      );
+      expect(Number(r.rows[0].days)).toBe(6); // 7 calendar days − 1 own weekly off
+    });
+  });
+
+  it("payroll working days follow the employee's weekly off days", async () => {
+    await asUser(db, admin, async () => {
+      const prev = (await db.query<{ y: number; m: number; days: number; offs: number }>(
+        `select extract(year from d)::int y, extract(month from d)::int m,
+                extract(day from (d + interval '1 month - 1 day'))::int days,
+                (select count(*)::int from generate_series(d, d + interval '1 month - 1 day', interval '1 day') g(x) where extract(dow from g.x) = $1) offs
+           from (select date_trunc('month', public.local_today() - interval '1 month')::date d) t`, [offDow],
+      )).rows[0];
+      const id = (await db.query<{ id: string }>("select public.generate_payroll($1, $2) as id", [prev.y, prev.m])).rows[0].id;
+      const item = await db.query<{ working_days: number }>("select working_days from payroll_items where payroll_id = $1 and employee_id = $2", [id, emp]);
+      expect(item.rows[0].working_days).toBe(prev.days - prev.offs);
+    });
+  });
+});

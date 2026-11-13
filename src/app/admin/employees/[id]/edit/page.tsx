@@ -35,6 +35,7 @@ export default async function EditEmployeePage({ params }: PageProps<"/admin/emp
         designations={designations}
         shifts={shifts}
         today={todayISO(settings.timezone)}
+        companyWeeklyOff={settings.weekly_off_days}
         defaults={{
           full_name: emp.full_name,
           phone: emp.phone ?? "",
@@ -45,6 +46,7 @@ export default async function EditEmployeePage({ params }: PageProps<"/admin/emp
           joining_date: emp.joining_date,
           employment_type: emp.employment_type,
           status: emp.status,
+          weekly_off_days: emp.weekly_off_days ?? null,
           email: personal?.email ?? "",
           address: personal?.address ?? "",
           date_of_birth: personal?.date_of_birth ?? "",

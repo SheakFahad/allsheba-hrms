@@ -21,6 +21,7 @@ export default async function NewEmployeePage() {
         designations={designations}
         shifts={shifts}
         today={todayISO(settings.timezone)}
+        companyWeeklyOff={settings.weekly_off_days}
       />
     </div>
   );

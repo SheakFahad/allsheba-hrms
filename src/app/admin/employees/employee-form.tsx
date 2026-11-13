@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FormSection, NativeSelect } from "@/components/shared/field";
 import { PhotoUpload } from "@/components/shared/photo-upload";
-import { EMPLOYMENT_STATUS_LABELS, EMPLOYMENT_STATUSES, EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPES } from "@/lib/constants";
+import { EMPLOYMENT_STATUS_LABELS, EMPLOYMENT_STATUSES, EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPES, WEEKDAY_LABELS } from "@/lib/constants";
 import { employeeSchema } from "@/lib/validation";
 import type { Department, Designation, Shift } from "@/lib/types";
 import { formatTime12 } from "@/lib/time";
@@ -33,6 +34,7 @@ export function EmployeeForm({
   designations,
   shifts,
   today,
+  companyWeeklyOff,
 }: {
   mode: "create" | "edit";
   employeeId?: string;
@@ -41,6 +43,8 @@ export function EmployeeForm({
   designations: Designation[];
   shifts: Shift[];
   today: string;
+  /** Company default weekly off days (Settings). */
+  companyWeeklyOff: number[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -51,7 +55,7 @@ export function EmployeeForm({
       designation_id: "", department_id: "", shift_id: "", joining_date: today,
       employment_type: "full_time", status: "active", emergency_contact_name: "",
       emergency_contact_phone: "", emergency_contact_relation: "", notes: "", photo_path: "",
-      basic_salary: "", allowances: "",
+      basic_salary: "", allowances: "", weekly_off_days: null,
       ...defaults,
     },
   });
@@ -155,6 +159,47 @@ export function EmployeeForm({
                 </NativeSelect>
               </Field>
             </div>
+          </FormSection>
+
+          <FormSection
+            title="Weekly holiday"
+            description="Which days of the week this employee does not work. Used for attendance closing, leave days, payroll and attendance %."
+          >
+            <Controller
+              control={form.control}
+              name="weekly_off_days"
+              render={({ field }) => {
+                const custom = Array.isArray(field.value);
+                const days = (field.value ?? []) as number[];
+                return (
+                  <div className="grid gap-3">
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Weekly holiday">
+                      <Button type="button" size="sm" variant={custom ? "outline" : "default"} role="radio" aria-checked={!custom} onClick={() => field.onChange(null)}>
+                        Company default ({companyWeeklyOff.length ? companyWeeklyOff.map((d) => WEEKDAY_LABELS[d]).join(", ") : "none"})
+                      </Button>
+                      <Button type="button" size="sm" variant={custom ? "default" : "outline"} role="radio" aria-checked={custom} onClick={() => field.onChange(custom ? days : [...companyWeeklyOff])}>
+                        Custom for this employee
+                      </Button>
+                    </div>
+                    {custom && (
+                      <div className="flex flex-wrap gap-x-4 gap-y-2">
+                        {WEEKDAY_LABELS.map((label, i) => (
+                          <label key={label} className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={days.includes(i)}
+                              onCheckedChange={(c) => field.onChange(c === true ? [...days, i].sort() : days.filter((x) => x !== i))}
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {custom && days.length === 0 && <p className="text-xs text-muted-foreground">No weekly holiday — works all 7 days.</p>}
+                    {errors.weekly_off_days && <p className="text-xs font-medium text-danger">{String(errors.weekly_off_days.message ?? "Invalid selection")}</p>}
+                  </div>
+                );
+              }}
+            />
           </FormSection>
 
           {mode === "create" && (

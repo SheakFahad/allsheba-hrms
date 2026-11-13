@@ -42,7 +42,7 @@ export async function fetchAttendance(q: AttendanceQuery): Promise<Attendance[]>
  * employee's joining date and today (future days are not counted).
  */
 export async function scheduledWorkingDays(
-  employees: { joining_date: string }[],
+  employees: { joining_date: string; weekly_off_days?: number[] | null }[],
   from: string,
   to: string,
 ): Promise<number> {
@@ -53,14 +53,14 @@ export async function scheduledWorkingDays(
   let total = 0;
   for (const e of employees) {
     const start = e.joining_date > from ? e.joining_date : from;
-    total += workingDays(start, end, settings.weekly_off_days, holidays).length;
+    total += workingDays(start, end, e.weekly_off_days ?? settings.weekly_off_days, holidays).length;
   }
   return total;
 }
 
 export async function attendanceAnalytics(
   rows: Attendance[],
-  employees: { joining_date: string }[],
+  employees: { joining_date: string; weekly_off_days?: number[] | null }[],
   from: string,
   to: string,
 ): Promise<AttendanceSummary> {

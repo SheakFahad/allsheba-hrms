@@ -100,9 +100,11 @@ export interface EmployeeOption {
   shiftId: string | null;
   photoUrl: string | null;
   joiningDate: string;
+  /** Effective weekly off days (own or company default). */
+  weeklyOff: number[];
 }
 
-export function toEmployeeOption(e: Employee): EmployeeOption {
+export function toEmployeeOption(e: Employee, companyWeeklyOff: number[] = []): EmployeeOption {
   return {
     id: e.id,
     code: e.employee_code,
@@ -112,5 +114,6 @@ export function toEmployeeOption(e: Employee): EmployeeOption {
     shiftId: e.shift_id,
     photoUrl: publicStorageUrl(e.photo_path),
     joiningDate: e.joining_date,
+    weeklyOff: e.weekly_off_days ?? companyWeeklyOff,
   };
 }

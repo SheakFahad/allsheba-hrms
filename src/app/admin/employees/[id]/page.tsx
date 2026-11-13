@@ -18,7 +18,7 @@ import { requirePageRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { EMPLOYEE_SELECT, getLeaveTypes, getSettings } from "@/lib/data";
 import { attendanceAnalytics, fetchAttendance } from "@/lib/attendance-data";
-import { EMPLOYMENT_TYPE_LABELS } from "@/lib/constants";
+import { EMPLOYMENT_TYPE_LABELS, WEEKDAY_LABELS } from "@/lib/constants";
 import { formatBytes, formatMoney, publicStorageUrl } from "@/lib/format";
 import { formatDate, formatDateTime, formatMonth, formatTime12, monthRange, todayISO } from "@/lib/time";
 import { isMonth, param } from "@/lib/params";
@@ -197,6 +197,7 @@ async function Overview({ emp, current, id, range, today }: {
             ["Employment type", EMPLOYMENT_TYPE_LABELS[emp.employment_type]],
             ["Phone", emp.phone],
             ["Shift", emp.shifts ? `${emp.shifts.name} (${formatTime12(emp.shifts.start_time)} – ${formatTime12(emp.shifts.end_time)})` : "Default shift"],
+            ["Weekly holiday", emp.weekly_off_days ? (emp.weekly_off_days.length ? emp.weekly_off_days.map((d) => WEEKDAY_LABELS[d]).join(", ") : "None (works 7 days)") : "Company default"],
             ["Gross salary", current ? formatMoney(Number(current.basic_salary) + Number(current.allowances)) : "Not set"],
           ]} />
         </CardContent>

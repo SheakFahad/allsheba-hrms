@@ -47,7 +47,7 @@ export default async function AdminLeavePage({ searchParams }: PageProps<"/admin
         actions={
           <>
             <ExportButton type="leave_summary" params={{ year: String(year) }} label="Leave summary" />
-            <NewLeaveDialog employees={employees.map(toEmployeeOption)} types={types} today={today} isAdmin balances={balances} />
+            <NewLeaveDialog employees={employees.map((e) => toEmployeeOption(e, settings.weekly_off_days))} types={types} today={today} isAdmin balances={balances} />
           </>
         }
       />

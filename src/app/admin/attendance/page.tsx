@@ -28,7 +28,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
   const requested = param(sp, "date");
   const date = isISODate(requested) && requested <= today ? requested : today;
   const [overview, employees, shifts] = await Promise.all([getDayOverview(date), getActiveEmployees(), getShifts()]);
-  const options = employees.map(toEmployeeOption);
+  const options = employees.map((e) => toEmployeeOption(e, settings.weekly_off_days));
   const c = overview.counts;
   const dialogProps = {
     employees: options, shifts, timezone: settings.timezone, today, date,
@@ -56,7 +56,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
         <StatCard label="Half day" value={c.halfDay} icon={LogOut} tone="info" />
         <StatCard label="Absent" value={c.absent} icon={CalendarX2} tone="danger" />
         <StatCard label="On leave" value={c.leave} icon={PlaneTakeoff} tone="brand" />
-        <StatCard label="Not recorded" value={c.notRecorded} icon={UserX} tone="neutral" hint="Absence is set only by closing" />
+        <StatCard label="Not recorded" value={c.notRecorded} icon={UserX} tone="neutral" hint={c.weeklyOff ? `${c.weeklyOff} on weekly off · absence set by closing` : "Absence is set only by closing"} />
       </div>
       <Card className="gap-0 py-0">
         <div className="border-b p-4">

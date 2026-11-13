@@ -39,7 +39,7 @@ export default async function EntryLeavePage() {
         <Card>
           <CardHeader><CardTitle>New application</CardTitle></CardHeader>
           <CardContent>
-            <LeaveApplyForm employees={employees.map(toEmployeeOption)} types={types} today={today} isAdmin={false} balances={balances} />
+            <LeaveApplyForm employees={employees.map((e) => toEmployeeOption(e, settings.weekly_off_days))} types={types} today={today} isAdmin={false} balances={balances} />
           </CardContent>
         </Card>
         <Card className="gap-0 pb-0">

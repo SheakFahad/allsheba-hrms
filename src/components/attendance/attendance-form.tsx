@@ -11,7 +11,7 @@ import { Field, NativeSelect } from "@/components/shared/field";
 import { EmployeePicker, type PickerEmployee } from "@/components/shared/employee-picker";
 import { calculateAttendance } from "@/lib/attendance-calc";
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUSES, LATE_REASON_LABELS, LATE_REASONS } from "@/lib/constants";
-import { formatDuration, formatTime12, nowHHMM, toHHMM } from "@/lib/time";
+import { dayOfWeek, formatDuration, formatTime12, nowHHMM, toHHMM, weekdayName } from "@/lib/time";
 import { lookupAttendance, saveAttendance } from "@/lib/attendance-actions";
 import type { Attendance, AttendanceStatus, LateReason, Shift } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 export interface FormEmployee extends PickerEmployee {
   shiftId: string | null;
   joiningDate: string;
+  /** Effective weekly off days for this employee. */
+  weeklyOff?: number[];
 }
 
 interface Policy {
@@ -284,6 +286,13 @@ export function AttendanceForm({
           {employee.department && <span><span className="text-muted-foreground">Department:</span> {employee.department}</span>}
           <span><span className="text-muted-foreground">Schedule:</span> {flexible ? "Flexible (no office hours)" : <>{formatTime12(schedule.in)} – {formatTime12(schedule.out)}{grace ? ` (grace ${grace} min)` : ""}</>}</span>
           {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+        </div>
+      )}
+
+      {employee && !existing && date && employee.weeklyOff?.includes(dayOfWeek(date)) && (
+        <div className="flex gap-2.5 rounded-lg border border-info/20 bg-info-soft px-4 py-3 text-sm text-info">
+          <Info className="mt-0.5 size-4 shrink-0" />
+          <p>{weekdayName(date)} is {employee.name}&apos;s weekly holiday. Record attendance only if they worked today.</p>
         </div>
       )}
 

@@ -65,7 +65,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/re
           </CardHeader>
           <CardContent>
             <ReportBuilder
-              employees={employees.map(toEmployeeOption)}
+              employees={employees.map((e) => toEmployeeOption(e, settings.weekly_off_days))}
               departments={departments.map((d) => ({ id: d.id, name: d.name }))}
               today={today}
               initialType={param(sp, "type")}

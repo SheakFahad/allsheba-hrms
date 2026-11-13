@@ -77,6 +77,9 @@ export const employeeSchema = z.object({
   emergency_contact_relation: optionalText(40),
   notes: optionalText(2000),
   photo_path: optionalText(300),
+  /** null = company default weekly off days. */
+  weekly_off_days: z.array(z.coerce.number().int().min(0).max(6)).max(6, "At least one working day is required").nullable().optional()
+    .transform((v) => (v ? [...new Set(v)].sort() : null)),
 });
 export type EmployeeInput = z.input<typeof employeeSchema>;
 

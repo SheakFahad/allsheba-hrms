@@ -19,7 +19,7 @@ export default async function EntryHome() {
   const settings = await getSettings();
   const today = todayISO(settings.timezone);
   const [employees, shifts, overview] = await Promise.all([getActiveEmployees(), getShifts(), getDayOverview(today)]);
-  const options = employees.filter((e) => e.status === "active" || e.status === "on_notice").map(toEmployeeOption);
+  const options = employees.filter((e) => e.status === "active" || e.status === "on_notice").map((e) => toEmployeeOption(e, settings.weekly_off_days));
   const c = overview.counts;
 
   return (
@@ -37,7 +37,7 @@ export default async function EntryHome() {
         <StatCard label="Recorded" value={`${c.recorded} / ${c.expected}`} icon={CalendarCheck2} tone="info" />
         <StatCard label="Present" value={c.present} icon={CalendarCheck2} tone="success" />
         <StatCard label="Late" value={c.late} icon={AlarmClock} tone="warning" />
-        <StatCard label="Not recorded" value={c.notRecorded} icon={UserX} tone="neutral" hint={`${c.checkedOut} checked out`} />
+        <StatCard label="Not recorded" value={c.notRecorded} icon={UserX} tone="neutral" hint={`${c.checkedOut} checked out${c.weeklyOff ? ` · ${c.weeklyOff} on weekly off` : ""}`} />
       </div>
       <div className="grid items-start gap-5 xl:grid-cols-[1.4fr_1fr]">
         <Card>

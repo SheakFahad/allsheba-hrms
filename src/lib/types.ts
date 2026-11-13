@@ -105,6 +105,8 @@ export interface Employee {
   status: EmploymentStatus;
   archived_at: string | null;
   archived_reason: string | null;
+  /** Own weekly off weekdays (0=Sun … 6=Sat); null = company default. */
+  weekly_off_days: number[] | null;
   created_at: string;
   updated_at: string;
   departments?: { name: string } | null;
