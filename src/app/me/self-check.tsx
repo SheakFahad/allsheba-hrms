@@ -100,6 +100,8 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
   const [lateReason, setLateReason] = React.useState<LateReason | "">("");
   const [lateNote, setLateNote] = React.useState("");
   const [needsReason, setNeedsReason] = React.useState(false);
+  /** How long the last attempt took (shown small, for speed testing). */
+  const [lastTiming, setLastTiming] = React.useState<string | null>(null);
 
   const rec = ctx.record;
   const canCheckIn = !rec;
@@ -125,11 +127,14 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     }
 
     let coords: GeolocationCoordinates | null = null;
+    let locateMs: number | null = null;
     if (ctx.gps_required) {
       if (!window.isSecureContext || !("geolocation" in navigator)) return fail(action, MSG.unavailable);
       setStatus({ kind: "busy", action, text: MSG.detecting });
+      const t0 = performance.now();
       try {
         coords = await readLocation(ctx.max_accuracy_m);
+        locateMs = Math.round(performance.now() - t0);
       } catch (e) {
         const code = (e as GeolocationPositionError)?.code;
         return fail(action, code === 1 ? MSG.denied : MSG.unavailable);
@@ -137,6 +142,7 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     }
 
     setStatus({ kind: "busy", action, text: MSG.verifying });
+    const t1 = performance.now();
     let res: Awaited<ReturnType<typeof selfAttendance>>;
     try {
       res = await selfAttendance({
@@ -150,6 +156,8 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     } catch {
       return fail(action, MSG.network);
     }
+    const timing = `${locateMs !== null ? `Location ${(locateMs / 1000).toFixed(1)} s · ` : ""}Server ${((performance.now() - t1) / 1000).toFixed(1)} s`;
+    setLastTiming(timing);
     if (!res.ok) {
       if (/late reason/i.test(res.error)) {
         setNeedsReason(true);
@@ -162,7 +170,7 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     if (r.ok) {
       setStatus({ kind: "idle" });
       toast.success(r.gps_verified ? MSG.success : MSG.successNoGps, {
-        description: `${action === "check_in" ? "Checked in" : "Checked out"} at ${formatTime12(r.time)}${r.late_minutes ? ` · ${r.late_minutes} min late` : ""}`,
+        description: `${action === "check_in" ? "Checked in" : "Checked out"} at ${formatTime12(r.time)}${r.late_minutes ? ` · ${r.late_minutes} min late` : ""} · ${timing}`,
       });
       router.refresh();
       return;
@@ -227,6 +235,9 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
         <div aria-live="polite" className="min-h-5 text-sm">
           {status.kind === "busy" && (
             <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> {status.text}</p>
+          )}
+          {status.kind !== "busy" && lastTiming && (
+            <p className="mb-1 text-xs text-muted-foreground">Last attempt: {lastTiming}</p>
           )}
           {status.kind === "error" && (
             <p className={cn("flex flex-wrap items-center gap-2 text-danger")}>
