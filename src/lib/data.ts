@@ -44,6 +44,18 @@ export function brandingFrom(s: CompanySettings): Branding {
 
 export const getBranding = cache(async () => brandingFrom(await getSettings()));
 
+/**
+ * Branding for the employee portal. Employees cannot read company_settings
+ * (staff only), so this uses company_branding(), which returns only the public
+ * name / logo / contact fields.
+ */
+export const getPublicBranding = cache(async (): Promise<Branding> => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("company_branding");
+  const s = (data ?? {}) as Partial<CompanySettings>;
+  return brandingFrom({ company_name: "All Sheba Limited", ...s } as CompanySettings);
+});
+
 export const getDepartments = cache(async (): Promise<Department[]> => {
   const supabase = await createClient();
   const { data } = await supabase.from("departments").select("*").order("name");

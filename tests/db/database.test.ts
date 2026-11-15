@@ -670,6 +670,15 @@ describe("employee portal: own profile, own leave, today's present list", () => 
     await db.query("insert into profiles (id, username, full_name, role, employee_id, must_change_password) values ($1, 'portal2', 'Rahim', 'employee', $2, false)", [otherUser, empA]);
   });
 
+  it("gives employees the company branding but not the settings table", async () => {
+    await asUser(db, user, async () => {
+      expect((await db.query("select * from company_settings")).rows.length).toBe(0);
+      const b = (await db.query<{ b: { company_name: string; office_latitude?: unknown } }>("select public.company_branding() as b")).rows[0].b;
+      expect(b.company_name).toBeTruthy();
+      expect(b.office_latitude).toBeUndefined();
+    });
+  });
+
   it("shows the employee their own profile only", async () => {
     await asUser(db, user, async () => {
       const p = (await db.query<{ p: { code: string; name: string } }>("select public.my_profile() as p")).rows[0].p;
