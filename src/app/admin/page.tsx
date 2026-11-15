@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlarmClock, CalendarCheck2, CalendarX2, FileClock, Percent, PlaneTakeoff, UserCheck, Users, Wallet,
 } from "lucide-react";
@@ -26,76 +28,30 @@ import type { LeaveRequest, PayrollRecord } from "@/lib/types";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function AdminDashboard({ searchParams }: PageProps<"/admin">) {
-  const user = await requirePageRole("admin");
-  const sp = await searchParams;
-  const settings = await getSettings();
+  const [user, sp, settings] = await Promise.all([requirePageRole("admin"), searchParams, getSettings()]);
   const today = todayISO(settings.timezone);
   const month = isMonth(param(sp, "month")) && param(sp, "month")! <= today.slice(0, 7) ? param(sp, "month")! : today.slice(0, 7);
   const [y, m] = month.split("-").map(Number);
   const range = monthRange(y, m);
   const end = range.to < today ? range.to : today;
 
-  // Six-month window ending at the selected month (for trends).
-  const months: { y: number; m: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(Date.UTC(y, m - 1 - i, 1));
-    months.push({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1 });
-  }
-  const trendFrom = monthRange(months[0].y, months[0].m).from;
-
+  // Above-the-fold data only, in one parallel batch. Charts stream in below (<Suspense>).
   const supabase = await createClient();
-  const [employees, departments, leaveTypes, overview, rows, { count: totalEmployees }, { data: leaveToday }, { data: payrolls }, { count: pendingLeave }, { count: pendingCorr }] =
+  const [employees, overview, monthRows, { count: totalEmployees }, { data: leaveToday }, { data: monthPayroll }, { count: pendingLeave }, { count: pendingCorr }] =
     await Promise.all([
       getActiveEmployees(),
-      getDepartments(),
-      getLeaveTypes(),
       getDayOverview(today),
-      fetchAttendance({ from: trendFrom, to: end }),
+      fetchAttendance({ from: range.from, to: end }),
       supabase.from("employees").select("id", { count: "exact", head: true }),
       supabase.from("leave_requests").select("employee_id").eq("status", "approved").lte("start_date", today).gte("end_date", today),
-      supabase.from("payroll_records").select("*").gte("period_year", months[0].y).order("period_year").order("period_month"),
+      supabase.from("payroll_records").select("total_net, status").eq("period_year", y).eq("period_month", m).maybeSingle<Pick<PayrollRecord, "total_net" | "status">>(),
       supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
       supabase.from("attendance_corrections").select("id", { count: "exact", head: true }).eq("status", "pending"),
     ]);
   const active = employees.filter((e) => e.status === "active" || e.status === "on_notice");
-  const monthRows = rows.filter((r) => r.attendance_date >= range.from && r.attendance_date <= end);
   const monthSummary = summarizeAttendance(monthRows, await scheduledWorkingDays(active, range.from, end));
   const c = overview.counts;
   const onLeaveToday = new Set(((leaveToday ?? []) as { employee_id: string }[]).map((l) => l.employee_id)).size;
-  const payrollList = (payrolls ?? []) as PayrollRecord[];
-  const monthPayroll = payrollList.find((p) => p.period_year === y && p.period_month === m);
-
-  const attendanceTrend = await Promise.all(
-    months.map(async ({ y: yy, m: mm }) => {
-      const r = monthRange(yy, mm);
-      const to = r.to < today ? r.to : today;
-      const mine = rows.filter((x) => x.attendance_date >= r.from && x.attendance_date <= to);
-      const s = summarizeAttendance(mine, await scheduledWorkingDays(active, r.from, to));
-      return { month: `${MONTH_LABELS[mm - 1].slice(0, 3)} ${String(yy).slice(2)}`, pct: s.attendancePercentage, late: s.lateDays, lateMin: s.totalLateMinutes };
-    }),
-  );
-  const deptData = await Promise.all(
-    departments.filter((d) => d.is_active).map(async (d) => {
-      const emps = active.filter((e) => e.department_id === d.id);
-      const ids = new Set(emps.map((e) => e.id));
-      const s = summarizeAttendance(monthRows.filter((r) => ids.has(r.employee_id)), await scheduledWorkingDays(emps, range.from, end));
-      return { department: d.name, pct: s.attendancePercentage };
-    }),
-  );
-  const ranking = (await employeeWiseAnalytics(active, monthRows, range.from, end))
-    .sort((a, b) => b.summary.attendancePercentage - a.summary.attendancePercentage)
-    .slice(0, 10)
-    .map((r) => ({ name: r.employee.full_name, pct: r.summary.attendancePercentage }));
-
-  const { data: monthLeaves } = await supabase.from("leave_requests").select("leave_type_id, days, status").eq("status", "approved").gte("start_date", `${y}-01-01`).lte("start_date", `${y}-12-31`);
-  const leaveStats = leaveTypes.filter((t) => t.is_active).map((t) => ({
-    type: t.name,
-    days: ((monthLeaves ?? []) as Pick<LeaveRequest, "leave_type_id" | "days">[]).filter((l) => l.leave_type_id === t.id).reduce((s, l) => s + Number(l.days), 0),
-  }));
-  const payrollTrend = months.map(({ y: yy, m: mm }) => {
-    const p = payrollList.find((x) => x.period_year === yy && x.period_month === mm);
-    return { month: `${MONTH_LABELS[mm - 1].slice(0, 3)} ${String(yy).slice(2)}`, net: p ? Number(p.total_net) : 0 };
-  });
 
   return (
     <>
@@ -142,14 +98,9 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
         />
       </div>
 
-      <div className="mb-5 grid gap-5 lg:grid-cols-2">
-        <ChartCard title="Monthly attendance trend" description="Company attendance rate, last 6 months" kind="line" valueFormat="percent" data={attendanceTrend} xKey="month" xLabel="Month" series={[{ key: "pct", label: "Attendance %" }]} />
-        <ChartCard title="Late arrival trend" description="Late days per month" data={attendanceTrend} xKey="month" xLabel="Month" series={[{ key: "late", label: "Late days" }]} />
-        <ChartCard title="Department-wise attendance" description={formatMonth(y, m)} layout="horizontal" valueFormat="percent" data={deptData} xKey="department" xLabel="Department" series={[{ key: "pct", label: "Attendance %" }]} emptyText="No departments yet" />
-        <ChartCard title="Employee attendance ranking" description={`Top 10 · ${formatMonth(y, m)}`} layout="horizontal" valueFormat="percent" height={Math.max(220, ranking.length * 28)} data={ranking} xKey="name" xLabel="Employee" series={[{ key: "pct", label: "Attendance %" }]} emptyText="No attendance yet" />
-        <ChartCard title="Leave statistics" description={`Approved leave days in ${y}`} data={leaveStats} xKey="type" xLabel="Leave type" series={[{ key: "days", label: "Days" }]} emptyText="No approved leave this year" />
-        <ChartCard title="Payroll expense trend" description="Net payroll, last 6 months" kind="area" valueFormat="money" data={payrollTrend} xKey="month" xLabel="Month" series={[{ key: "net", label: "Net payroll (BDT)" }]} emptyText="No payroll generated yet" />
-      </div>
+      <Suspense key={month} fallback={<ChartsSkeleton />}>
+        <DashboardCharts y={y} m={m} today={today} />
+      </Suspense>
 
       <Card className="gap-0 pb-0">
         <CardHeader className="border-b pb-4">
@@ -159,5 +110,81 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
         <div className="max-h-[420px] overflow-y-auto"><DayList rows={overview.rows} /></div>
       </Card>
     </>
+  );
+}
+
+function ChartsSkeleton() {
+  return (
+    <div className="mb-5 grid gap-5 lg:grid-cols-2" aria-busy="true" aria-label="Loading charts">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-[330px] rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+/** Six-month analytics. Streams after the stat cards so the page is usable immediately. */
+async function DashboardCharts({ y, m, today }: { y: number; m: number; today: string }) {
+  const range = monthRange(y, m);
+  const end = range.to < today ? range.to : today;
+  const months: { y: number; m: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(y, m - 1 - i, 1));
+    months.push({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1 });
+  }
+  const trendFrom = monthRange(months[0].y, months[0].m).from;
+  const supabase = await createClient();
+  const [employees, departments, leaveTypes, rows, { data: payrolls }, { data: yearLeaves }] = await Promise.all([
+    getActiveEmployees(),
+    getDepartments(),
+    getLeaveTypes(),
+    fetchAttendance({ from: trendFrom, to: end }),
+    supabase.from("payroll_records").select("period_year, period_month, total_net").gte("period_year", months[0].y),
+    supabase.from("leave_requests").select("leave_type_id, days").eq("status", "approved").gte("start_date", `${y}-01-01`).lte("start_date", `${y}-12-31`),
+  ]);
+  const active = employees.filter((e) => e.status === "active" || e.status === "on_notice");
+  const monthRows = rows.filter((r) => r.attendance_date >= range.from && r.attendance_date <= end);
+  const label = (yy: number, mm: number) => `${MONTH_LABELS[mm - 1].slice(0, 3)} ${String(yy).slice(2)}`;
+
+  const attendanceTrend = await Promise.all(
+    months.map(async ({ y: yy, m: mm }) => {
+      const r = monthRange(yy, mm);
+      const to = r.to < today ? r.to : today;
+      const mine = rows.filter((x) => x.attendance_date >= r.from && x.attendance_date <= to);
+      const s = summarizeAttendance(mine, await scheduledWorkingDays(active, r.from, to));
+      return { month: label(yy, mm), pct: s.attendancePercentage, late: s.lateDays, lateMin: s.totalLateMinutes };
+    }),
+  );
+  const deptData = await Promise.all(
+    departments.filter((d) => d.is_active).map(async (d) => {
+      const emps = active.filter((e) => e.department_id === d.id);
+      const ids = new Set(emps.map((e) => e.id));
+      const s = summarizeAttendance(monthRows.filter((r) => ids.has(r.employee_id)), await scheduledWorkingDays(emps, range.from, end));
+      return { department: d.name, pct: s.attendancePercentage };
+    }),
+  );
+  const ranking = (await employeeWiseAnalytics(active, monthRows, range.from, end))
+    .sort((a, b) => b.summary.attendancePercentage - a.summary.attendancePercentage)
+    .slice(0, 10)
+    .map((r) => ({ name: r.employee.full_name, pct: r.summary.attendancePercentage }));
+  const leaveStats = leaveTypes.filter((t) => t.is_active).map((t) => ({
+    type: t.name,
+    days: ((yearLeaves ?? []) as Pick<LeaveRequest, "leave_type_id" | "days">[]).filter((l) => l.leave_type_id === t.id).reduce((s, l) => s + Number(l.days), 0),
+  }));
+  const payrollList = (payrolls ?? []) as Pick<PayrollRecord, "period_year" | "period_month" | "total_net">[];
+  const payrollTrend = months.map(({ y: yy, m: mm }) => {
+    const p = payrollList.find((x) => x.period_year === yy && x.period_month === mm);
+    return { month: label(yy, mm), net: p ? Number(p.total_net) : 0 };
+  });
+
+  return (
+    <div className="mb-5 grid gap-5 lg:grid-cols-2">
+      <ChartCard title="Monthly attendance trend" description="Company attendance rate, last 6 months" kind="line" valueFormat="percent" data={attendanceTrend} xKey="month" xLabel="Month" series={[{ key: "pct", label: "Attendance %" }]} />
+      <ChartCard title="Late arrival trend" description="Late days per month" data={attendanceTrend} xKey="month" xLabel="Month" series={[{ key: "late", label: "Late days" }]} />
+      <ChartCard title="Department-wise attendance" description={formatMonth(y, m)} layout="horizontal" valueFormat="percent" data={deptData} xKey="department" xLabel="Department" series={[{ key: "pct", label: "Attendance %" }]} emptyText="No departments yet" />
+      <ChartCard title="Employee attendance ranking" description={`Top 10 · ${formatMonth(y, m)}`} layout="horizontal" valueFormat="percent" height={Math.max(220, ranking.length * 28)} data={ranking} xKey="name" xLabel="Employee" series={[{ key: "pct", label: "Attendance %" }]} emptyText="No attendance yet" />
+      <ChartCard title="Leave statistics" description={`Approved leave days in ${y}`} data={leaveStats} xKey="type" xLabel="Leave type" series={[{ key: "days", label: "Days" }]} emptyText="No approved leave this year" />
+      <ChartCard title="Payroll expense trend" description="Net payroll, last 6 months" kind="area" valueFormat="money" data={payrollTrend} xKey="month" xLabel="Month" series={[{ key: "net", label: "Net payroll (BDT)" }]} emptyText="No payroll generated yet" />
+    </div>
   );
 }

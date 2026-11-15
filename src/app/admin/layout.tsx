@@ -4,10 +4,12 @@ import { getBranding } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const user = await requirePageRole("admin");
-  const branding = await getBranding();
+  // Started together: the role check still decides what renders (redirects on failure),
+  // and RLS protects the counts for anyone who is not an administrator.
   const supabase = await createClient();
-  const [corrections, leaves] = await Promise.all([
+  const [user, branding, corrections, leaves] = await Promise.all([
+    requirePageRole("admin"),
+    getBranding(),
     supabase.from("attendance_corrections").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
   ]);

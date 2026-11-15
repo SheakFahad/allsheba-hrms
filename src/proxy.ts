@@ -28,10 +28,11 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Do not remove: validates and refreshes the auth token.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Do not remove: refreshes the session cookie and verifies the token.
+  // getClaims() verifies the ES256-signed JWT locally (cached JWKS) instead of a
+  // network round trip to Supabase Auth on every request.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? { id: data.claims.sub } : null;
 
   const path = request.nextUrl.pathname;
   if (!user && PROTECTED.some((p) => path === p || path.startsWith(`${p}/`))) {

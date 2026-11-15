@@ -68,13 +68,17 @@ export const getLeaveTypes = cache(async (): Promise<LeaveType[]> => {
   return (data ?? []).map((t) => ({ ...t, days_per_year: Number(t.days_per_year), max_carry_days: Number(t.max_carry_days) })) as LeaveType[];
 });
 
-export const getHolidays = cache(async (from?: string, to?: string): Promise<Holiday[]> => {
+/** All holidays, loaded once per request (the table is small: a few rows per year). */
+const getAllHolidays = cache(async (): Promise<Holiday[]> => {
   const supabase = await createClient();
-  let q = supabase.from("holidays").select("*").order("holiday_date");
-  if (from) q = q.gte("holiday_date", from);
-  if (to) q = q.lte("holiday_date", to);
-  const { data } = await q;
+  const { data } = await supabase.from("holidays").select("*").order("holiday_date");
   return (data ?? []) as Holiday[];
+});
+
+/** Holidays in a date range — filtered in memory so any number of ranges costs one query. */
+export const getHolidays = cache(async (from?: string, to?: string): Promise<Holiday[]> => {
+  const all = await getAllHolidays();
+  return all.filter((h) => (!from || h.holiday_date >= from) && (!to || h.holiday_date <= to));
 });
 
 export const EMPLOYEE_SELECT =

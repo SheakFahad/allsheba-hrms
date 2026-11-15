@@ -3,8 +3,7 @@ import { requirePageRole } from "@/lib/auth";
 import { getBranding } from "@/lib/data";
 
 export default async function EntryLayout({ children }: LayoutProps<"/entry">) {
-  const user = await requirePageRole("entry");
-  const branding = await getBranding();
+  const [user, branding] = await Promise.all([requirePageRole("entry"), getBranding()]);
   return (
     <AppShell
       role="entry"

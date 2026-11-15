@@ -17,10 +17,12 @@ export interface SessionUser {
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Signature-verified locally (ES256 + cached JWKS). Account status and role are
+  // still checked in the database below on every request.
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return null;
+  const user = { id: userId };
   const { data } = await supabase
     .from("profiles")
     .select("id, username, full_name, role, is_active, must_change_password")
