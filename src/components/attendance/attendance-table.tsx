@@ -1,6 +1,6 @@
 import { CalendarX2, Lock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AttendanceBadge } from "@/components/shared/status-badge";
+import { AttendanceBadge, EntryMethodBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LATE_REASON_LABELS } from "@/lib/constants";
 import { formatDate, formatDuration, formatTime12, weekdayName } from "@/lib/time";
@@ -40,6 +40,7 @@ export function AttendanceTable({
             <TableHead className="text-right">Early Leave</TableHead>
             <TableHead className="text-right">Worked</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead title="Operator = recorded by the office (not GPS-verified); GPS ✓ = employee self check-in verified by location">Method</TableHead>
             {actions && <TableHead className="pr-4 text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
@@ -81,6 +82,7 @@ export function AttendanceTable({
                   {r.is_locked && <Lock className="size-3 text-muted-foreground" aria-label="Locked by admin" />}
                 </span>
               </TableCell>
+              <TableCell><EntryMethodBadge method={r.entry_method} /></TableCell>
               {actions && <TableCell className="pr-4 text-right">{actions(r)}</TableCell>}
             </TableRow>
           ))}

@@ -1,4 +1,5 @@
-export type AppRole = "admin" | "entry";
+export type AppRole = "admin" | "entry" | "employee";
+export type EntryMethod = "operator" | "self_gps" | "self";
 export type EmploymentType = "full_time" | "part_time" | "contract" | "intern" | "probation";
 export type EmploymentStatus = "active" | "on_notice" | "suspended" | "resigned" | "terminated";
 export type AttendanceStatus =
@@ -19,6 +20,8 @@ export interface Profile {
   role: AppRole;
   is_active: boolean;
   must_change_password: boolean;
+  /** Linked employee record (role "employee" only). */
+  employee_id: string | null;
   last_login_at: string | null;
   created_at: string;
 }
@@ -86,6 +89,14 @@ export interface CompanySettings {
   overtime_enabled: boolean;
   overtime_rate_multiplier: number;
   overtime_min_minutes: number;
+  office_name: string | null;
+  office_address: string | null;
+  office_latitude: number | null;
+  office_longitude: number | null;
+  office_radius_m: number;
+  gps_max_accuracy_m: number;
+  gps_required: boolean;
+  self_service_enabled: boolean;
   report_footer: string | null;
   payslip_note: string | null;
   updated_at: string;
@@ -177,6 +188,8 @@ export interface Attendance {
   late_reason_note: string | null;
   notes: string | null;
   source: AttendanceSource;
+  /** operator = Entry/Admin panel (not GPS-verified); self_gps = employee self check-in verified by GPS; self = self check-in with GPS off. */
+  entry_method: EntryMethod;
   is_locked: boolean;
   entered_by: string | null;
   updated_by: string | null;

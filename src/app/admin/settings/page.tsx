@@ -8,12 +8,15 @@ import { getSettings } from "@/lib/data";
 import { param } from "@/lib/params";
 import { formatDateTime } from "@/lib/time";
 import { AttendanceForm, CompanyForm, PayrollForm, ReportsForm } from "./settings-forms";
+import { LocationForm } from "./location-form";
+import { LocationHistory } from "./location-history";
 
 export const metadata: Metadata = { title: "Company Settings" };
 
 const TABS = [
   { key: "company", label: "Company" },
   { key: "attendance", label: "Attendance" },
+  { key: "location", label: "Office & GPS" },
   { key: "payroll", label: "Payroll" },
   { key: "reports", label: "Reports" },
   { key: "more", label: "More settings" },
@@ -30,6 +33,12 @@ export default async function SettingsPage({ searchParams }: PageProps<"/admin/s
       <LinkTabs tabs={TABS} active={tab} baseHref="/admin/settings" />
       {tab === "company" && <CompanyForm s={s} />}
       {tab === "attendance" && <AttendanceForm s={s} />}
+      {tab === "location" && (
+        <div className="grid gap-5">
+          <LocationForm s={s} />
+          <LocationHistory />
+        </div>
+      )}
       {tab === "payroll" && <PayrollForm s={s} />}
       {tab === "reports" && <ReportsForm s={s} />}
       {tab === "more" && (

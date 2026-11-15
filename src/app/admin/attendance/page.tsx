@@ -7,7 +7,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { FilterBar } from "@/components/shared/filters";
 import { ExportButton } from "@/components/shared/export-button";
 import { EmployeeAvatar } from "@/components/shared/employee-avatar";
-import { AttendanceBadge, ToneBadge } from "@/components/shared/status-badge";
+import { AttendanceBadge, EntryMethodBadge, ToneBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { requirePageRole } from "@/lib/auth";
 import { getActiveEmployees, getSettings, getShifts, toEmployeeOption } from "@/lib/data";
@@ -100,7 +100,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
                     <TableCell className="tabular font-medium">{formatTime12(r?.actual_out)}</TableCell>
                     <TableCell className="tabular text-right">{r?.early_leave_minutes ? <span className="text-danger">{r.early_leave_minutes} min</span> : "—"}</TableCell>
                     <TableCell className="tabular text-right">{r?.work_minutes ? formatDuration(r.work_minutes) : "—"}</TableCell>
-                    <TableCell>{r ? <AttendanceBadge status={r.status} /> : <ToneBadge tone="neutral">Not recorded</ToneBadge>}</TableCell>
+                    <TableCell>{r ? <span className="inline-flex items-center gap-1"><AttendanceBadge status={r.status} /><EntryMethodBadge method={r.entry_method} /></span> : <ToneBadge tone="neutral">Not recorded</ToneBadge>}</TableCell>
                     <TableCell className="pr-4">
                       <div className="flex justify-end gap-1">
                         {r ? (

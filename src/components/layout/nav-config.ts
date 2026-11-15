@@ -1,7 +1,7 @@
 import {
   BarChart3, Building2, CalendarCheck2, CalendarDays, CalendarRange, ClipboardList, ClockAlert,
   FileClock, History, LayoutDashboard, Printer, ScrollText, Settings, UserCog, Users, Wallet,
-  PlaneTakeoff, type LucideIcon,
+  PlaneTakeoff, MapPin, MapPinned, type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/lib/types";
 
@@ -32,6 +32,7 @@ export const NAV: Record<AppRole, NavGroup[]> = {
         { href: "/admin/attendance", label: "Attendance Management", icon: CalendarCheck2, exact: true },
         { href: "/admin/attendance/history", label: "Attendance History", icon: History },
         { href: "/admin/attendance/corrections", label: "Corrections", icon: FileClock },
+        { href: "/admin/attendance/gps", label: "GPS Check-ins", icon: MapPinned },
         { href: "/admin/leave", label: "Leave Management", icon: PlaneTakeoff },
         { href: "/admin/holidays", label: "Holidays & Shifts", icon: CalendarDays },
       ],
@@ -64,5 +65,8 @@ export const NAV: Record<AppRole, NavGroup[]> = {
       ],
     },
     { label: "Leave", items: [{ href: "/entry/leave", label: "Leave Applications", icon: PlaneTakeoff }] },
+  ],
+  employee: [
+    { label: "My Attendance", items: [{ href: "/me", label: "Check In / Check Out", icon: MapPin, exact: true }] },
   ],
 };

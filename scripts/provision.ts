@@ -13,7 +13,8 @@ import { createClient } from "@supabase/supabase-js";
 config({ path: ".env.local" });
 config();
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mcenelqeuaffxqvszjph.supabase.co";
+// No default: the target project must always be explicit (prevents provisioning production by mistake).
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const domain = process.env.AUTH_EMAIL_DOMAIN || "hrms.allsheba.local";
 

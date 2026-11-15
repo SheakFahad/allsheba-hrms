@@ -49,3 +49,10 @@ export function EmploymentBadge({ status, archived }: { status: EmploymentStatus
   if (archived) return <ToneBadge tone="neutral">Archived</ToneBadge>;
   return <ToneBadge tone={EMP_TONE[status]}>{EMPLOYMENT_STATUS_LABELS[status]}</ToneBadge>;
 }
+
+/** How the record was captured. Operator entries are explicitly NOT GPS-verified. */
+export function EntryMethodBadge({ method }: { method?: string | null }) {
+  if (method === "self_gps") return <ToneBadge tone="success" className="h-5 text-[10.5px]">GPS ✓</ToneBadge>;
+  if (method === "self") return <ToneBadge tone="info" className="h-5 text-[10.5px]">Self</ToneBadge>;
+  return <ToneBadge tone="neutral" className="h-5 text-[10.5px]" >Operator</ToneBadge>;
+}

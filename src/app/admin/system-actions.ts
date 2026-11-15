@@ -164,6 +164,18 @@ const settingsSchemas = {
     report_footer: optionalText(300),
     payslip_note: optionalText(500),
   }),
+  location: z
+    .object({
+      office_name: optionalText(120),
+      office_address: optionalText(300),
+      office_latitude: z.union([z.literal(""), z.coerce.number().min(-90, "Latitude must be between -90 and 90").max(90, "Latitude must be between -90 and 90")]).transform((x) => (x === "" ? null : x)),
+      office_longitude: z.union([z.literal(""), z.coerce.number().min(-180, "Longitude must be between -180 and 180").max(180, "Longitude must be between -180 and 180")]).transform((x) => (x === "" ? null : x)),
+      office_radius_m: z.coerce.number().int().min(10, "Radius must be at least 10 m").max(5000),
+      gps_max_accuracy_m: z.coerce.number().int().min(5).max(1000),
+      gps_required: bool,
+      self_service_enabled: bool,
+    })
+    .refine((x) => (x.office_latitude === null) === (x.office_longitude === null), { message: "Enter both latitude and longitude", path: ["office_latitude"] }),
 };
 
 export async function saveSettings(input: unknown) {
@@ -183,7 +195,9 @@ export async function saveSettings(input: unknown) {
 
 export async function createUser(input: unknown) {
   return runAction(
-    z.object({ username: usernameSchema, full_name: z.string().trim().min(2).max(120), role: z.enum(["admin", "entry"]), password: passwordSchema }),
+    z
+      .object({ username: usernameSchema, full_name: z.string().trim().min(2).max(120), role: z.enum(["admin", "entry", "employee"]), password: passwordSchema, employee_id: z.union([uuid, z.literal(""), z.null()]).optional().transform((x) => (x ? x : null)) })
+      .refine((x) => x.role !== "employee" || x.employee_id, { path: ["employee_id"], message: "Choose the employee this login belongs to" }),
     input,
     async (v) => {
       await assertRole("admin");
@@ -192,7 +206,10 @@ export async function createUser(input: unknown) {
       if (existing) throw new ActionError("That username is already taken.");
       const { data, error } = await admin.auth.admin.createUser({ email: usernameToEmail(v.username), password: v.password, email_confirm: true });
       if (error || !data.user) throw new ActionError(error?.message ?? "Could not create the user.");
-      const ins = await admin.from("profiles").insert({ id: data.user.id, username: v.username, full_name: v.full_name, role: v.role, must_change_password: true });
+      const ins = await admin.from("profiles").insert({
+        id: data.user.id, username: v.username, full_name: v.full_name, role: v.role, must_change_password: true,
+        employee_id: v.role === "employee" ? v.employee_id : null,
+      });
       if (ins.error) {
         await admin.auth.admin.deleteUser(data.user.id);
         throw new ActionError(ins.error.message);
@@ -207,7 +224,9 @@ export async function createUser(input: unknown) {
 
 export async function updateUser(input: unknown) {
   return runAction(
-    z.object({ id: uuid, full_name: z.string().trim().min(2).max(120), role: z.enum(["admin", "entry"]), is_active: bool }),
+    z
+      .object({ id: uuid, full_name: z.string().trim().min(2).max(120), role: z.enum(["admin", "entry", "employee"]), is_active: bool, employee_id: z.union([uuid, z.literal(""), z.null()]).optional().transform((x) => (x ? x : null)) })
+      .refine((x) => x.role !== "employee" || x.employee_id, { path: ["employee_id"], message: "Choose the employee this login belongs to" }),
     input,
     async ({ id, ...v }) => {
       const me = await assertRole("admin");
@@ -217,7 +236,7 @@ export async function updateUser(input: unknown) {
         const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").eq("is_active", true).neq("id", id);
         if (!count) throw new ActionError("At least one active administrator is required.");
       }
-      check(await supabase.from("profiles").update(v).eq("id", id));
+      check(await supabase.from("profiles").update({ ...v, employee_id: v.role === "employee" ? v.employee_id : null }).eq("id", id));
       if (!v.is_active) await createAdminClient().auth.admin.signOut(id).catch(() => undefined);
       revalidatePath("/admin/users");
       return { ok: true as const, message: "User updated" };

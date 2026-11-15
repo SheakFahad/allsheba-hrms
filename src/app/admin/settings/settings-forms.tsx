@@ -16,7 +16,7 @@ import { PAYROLL_BASIS_LABELS, WEEKDAY_LABELS } from "@/lib/constants";
 import type { CompanySettings } from "@/lib/types";
 import { saveSettings } from "../system-actions";
 
-type Section = "company" | "attendance" | "payroll" | "reports";
+type Section = "company" | "attendance" | "payroll" | "reports" | "location";
 
 function useSave(section: Section) {
   const router = useRouter();

@@ -433,6 +433,9 @@ export function AttendanceForm({
           </Field>
         )}
 
+        <p className="text-xs text-muted-foreground">
+          Recorded as an <b>operator entry</b> — it confirms who entered the record, not the employee&apos;s location (not GPS-verified).
+        </p>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button type="submit" size="lg" className="h-11 min-w-44 text-base" disabled={pending || !employee}>
             {pending ? <Loader2 className="animate-spin" /> : v.id ? <Save /> : <CheckCircle2 />}

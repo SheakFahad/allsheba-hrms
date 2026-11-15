@@ -6,13 +6,18 @@ import { ToneBadge } from "@/components/shared/status-badge";
 import { RecordDialog, type FieldDef } from "@/components/shared/record-dialog";
 import { requirePageRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveEmployees } from "@/lib/data";
 import { formatDateTime } from "@/lib/time";
 import type { Profile } from "@/lib/types";
 import { createUser, resetUserPassword, updateUser } from "../system-actions";
 
 export const metadata: Metadata = { title: "User Management" };
 
-const ROLE_OPTIONS = [{ value: "entry", label: "Entry operator (attendance entry only)" }, { value: "admin", label: "Administrator (full access)" }];
+const ROLE_OPTIONS = [
+  { value: "employee", label: "Employee (own GPS check-in / check-out only)" },
+  { value: "entry", label: "Entry operator (attendance entry for everyone)" },
+  { value: "admin", label: "Administrator (full access)" },
+];
 const CREATE_FIELDS: FieldDef[] = [
   { name: "username", label: "Username", type: "text", required: true, hint: "Lowercase letters, numbers, dot, dash, underscore" },
   { name: "full_name", label: "Full name", type: "text", required: true },
@@ -38,20 +43,33 @@ const PERMISSIONS: [string, string, string][] = [
   ["Payroll & payslips", "✓", "—"],
   ["Reports & exports", "All", "Daily / attendance only"],
   ["Users, settings, audit logs", "✓", "—"],
+  ["Location restriction (GPS)", "None — works from anywhere", "None (shared office computer, entries marked “not GPS-verified”)"],
 ];
 
 export default async function UsersPage() {
   const me = await requirePageRole("admin");
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("*").order("role").order("username");
+  const [{ data }, employees] = await Promise.all([
+    supabase.from("profiles").select("*").order("role").order("username"),
+    getActiveEmployees(),
+  ]);
   const users = (data ?? []) as Profile[];
+  const empName = new Map(employees.map((e) => [e.id, `${e.full_name} (${e.employee_code})`]));
+  const EMP_FIELD: FieldDef = {
+    name: "employee_id",
+    label: "Linked employee (for Employee role)",
+    type: "select",
+    options: [{ value: "", label: "— None —" }, ...employees.map((e) => ({ value: e.id, label: `${e.full_name} (${e.employee_code})` }))],
+  };
+  const createFields = [...CREATE_FIELDS.slice(0, 3), EMP_FIELD, CREATE_FIELDS[3]];
+  const editFields = [...EDIT_FIELDS.slice(0, 2), EMP_FIELD, EDIT_FIELDS[2]];
 
   return (
     <>
       <PageHeader
         title="User Management"
         description="Sign-in accounts for the Admin and Entry panels."
-        actions={<RecordDialog title="New user" fields={CREATE_FIELDS} initial={{ username: "", full_name: "", role: "entry", password: "" }} action={createUser} triggerLabel="Add user" />}
+        actions={<RecordDialog title="New user" fields={createFields} initial={{ username: "", full_name: "", role: "employee", employee_id: "", password: "" }} action={createUser} triggerLabel="Add user" />}
       />
       <Card className="mb-5 gap-0 py-0">
         <div className="overflow-x-auto">
@@ -63,7 +81,10 @@ export default async function UsersPage() {
               {users.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="pl-4"><span className="block font-medium">{u.full_name || u.username}</span><span className="text-xs text-muted-foreground">@{u.username}{u.id === me.id ? " (you)" : ""}</span></TableCell>
-                  <TableCell>{u.role === "admin" ? <ToneBadge tone="brand">Administrator</ToneBadge> : <ToneBadge tone="info">Entry operator</ToneBadge>}</TableCell>
+                  <TableCell>
+                    {u.role === "admin" ? <ToneBadge tone="brand">Administrator</ToneBadge> : u.role === "entry" ? <ToneBadge tone="info">Entry operator</ToneBadge> : <ToneBadge tone="success">Employee</ToneBadge>}
+                    {u.role === "employee" && <span className="mt-0.5 block text-xs text-muted-foreground">{u.employee_id ? empName.get(u.employee_id) ?? "Archived employee" : "Not linked"}</span>}
+                  </TableCell>
                   <TableCell className="space-x-1">
                     {u.is_active ? <ToneBadge tone="success">Active</ToneBadge> : <ToneBadge tone="neutral">Inactive</ToneBadge>}
                     {u.must_change_password && <ToneBadge tone="warning">Password change pending</ToneBadge>}
@@ -71,7 +92,7 @@ export default async function UsersPage() {
                   <TableCell className="text-sm text-muted-foreground">{formatDateTime(u.last_login_at)}</TableCell>
                   <TableCell className="pr-4">
                     <div className="flex justify-end gap-1">
-                      <RecordDialog edit title={`Edit @${u.username}`} fields={EDIT_FIELDS} initial={{ id: u.id, full_name: u.full_name, role: u.role, is_active: u.is_active }} action={updateUser} />
+                      <RecordDialog edit title={`Edit @${u.username}`} fields={editFields} initial={{ id: u.id, full_name: u.full_name, role: u.role, is_active: u.is_active, employee_id: u.employee_id ?? "" }} action={updateUser} />
                       <RecordDialog title={`Reset password for @${u.username}`} triggerLabel="Reset password" fields={RESET_FIELDS} initial={{ id: u.id, password: "" }} action={resetUserPassword} />
                     </div>
                   </TableCell>

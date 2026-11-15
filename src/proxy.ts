@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
-const PROTECTED = ["/admin", "/entry", "/change-password", "/account"];
+const PROTECTED = ["/admin", "/entry", "/me", "/change-password", "/account"];
 
 /**
  * Refreshes the Supabase session cookie on every request and keeps signed-out

@@ -67,12 +67,12 @@ function SidebarNav({ role, badges, onNavigate }: { role: AppRole; badges?: Reco
 
 function Brand({ company, role }: { company: ShellProps["company"]; role: AppRole }) {
   return (
-    <Link href={role === "admin" ? "/admin" : "/entry"} className="flex items-center gap-2.5 px-5 py-4">
+    <Link href={role === "admin" ? "/admin" : role === "entry" ? "/entry" : "/me"} className="flex items-center gap-2.5 px-5 py-4">
       <Logo src={company.logoUrl} variant="mark" className="h-8" alt={company.name} />
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold leading-tight">{company.name}</span>
         <span className="block text-[11px] font-medium text-muted-foreground">
-          {role === "admin" ? "Admin Panel" : "Entry Panel"}
+          {role === "admin" ? "Admin Panel" : role === "entry" ? "Entry Panel" : "Employee"}
         </span>
       </span>
     </Link>

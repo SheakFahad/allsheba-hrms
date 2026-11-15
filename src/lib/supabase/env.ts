@@ -13,8 +13,19 @@
 const DEFAULT_SUPABASE_URL = "https://mcenelqeuaffxqvszjph.supabase.co";
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Uc64IjlC3VqACrTCqy1g6w_JADM_qhB";
 
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+/**
+ * Production defaults are ONLY used by the production deployment (and local dev).
+ * Preview / staging deployments must supply their own Supabase variables; if they
+ * are missing the app reports "not connected" instead of silently reaching the
+ * production database.
+ */
+const VERCEL_ENV = process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.VERCEL_ENV;
+const ALLOW_PRODUCTION_DEFAULTS = !VERCEL_ENV || VERCEL_ENV === "production";
+
+export const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || (ALLOW_PRODUCTION_DEFAULTS ? DEFAULT_SUPABASE_URL : "");
+export const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (ALLOW_PRODUCTION_DEFAULTS ? DEFAULT_SUPABASE_PUBLISHABLE_KEY : "");
 
 export function getSupabaseEnv() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

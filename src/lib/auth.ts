@@ -39,7 +39,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 });
 
 export function homeFor(role: AppRole) {
-  return role === "admin" ? "/admin" : "/entry";
+  return role === "admin" ? "/admin" : role === "entry" ? "/entry" : "/me";
 }
 
 /** For pages/layouts: redirect when the user may not see this area. */

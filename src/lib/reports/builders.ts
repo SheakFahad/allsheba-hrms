@@ -106,6 +106,7 @@ const ATT_COLUMNS: ReportColumn[] = [
   { key: "early", label: "Early Dep.", format: "minutes", align: "right" },
   { key: "worked", label: "Worked", format: "duration", align: "right" },
   { key: "status", label: "Status" },
+  { key: "method", label: "Method" },
   { key: "notes", label: "Notes" },
 ];
 
@@ -126,6 +127,7 @@ function attRow(a: Attendance): Row {
     early: a.early_leave_minutes,
     worked: a.work_minutes,
     status: ATTENDANCE_STATUS_LABELS[a.status],
+    method: a.entry_method === "self_gps" ? "GPS verified" : a.entry_method === "self" ? "Self (no GPS)" : "Operator",
     notes: a.notes,
   };
 }

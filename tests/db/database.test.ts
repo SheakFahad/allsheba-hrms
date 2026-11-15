@@ -433,3 +433,119 @@ describe("per-employee weekly off days", () => {
     });
   });
 });
+
+describe("GPS self-service attendance", () => {
+  const OFFICE = { lat: 23.780887, lng: 90.407249 };      // office (Dhaka)
+  const NEAR = { lat: 23.781200, lng: 90.407400 };         // ~38 m away
+  const FAR = { lat: 23.790000, lng: 90.407249 };          // ~1 km away
+  let gpsEmp = "";
+  let empUser = "";
+  const selfCall = (kind: string, loc: { lat: number; lng: number } | null, acc: number | null) =>
+    db.query<{ r: Record<string, unknown> }>(
+      "select public.self_attendance($1, $2, $3, $4, 'traffic_jam', null) as r",
+      [kind, loc?.lat ?? null, loc?.lng ?? null, acc],
+    ).then((x) => x.rows[0].r);
+
+  beforeAll(async () => {
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set office_latitude = $1, office_longitude = $2, office_radius_m = 100, gps_max_accuracy_m = 50, gps_required = true where id = 1", [OFFICE.lat, OFFICE.lng]);
+      gpsEmp = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date, shift_id) values ('Gps Person', current_date - 90, (select id from shifts where is_default)) returning id",
+      )).rows[0].id;
+    });
+    const u = await db.query<{ id: string }>("insert into auth.users (email) values ('gps@hrms.local') returning id");
+    empUser = u.rows[0].id;
+    await db.query("insert into profiles (id, username, full_name, role, employee_id, must_change_password) values ($1, 'gpsperson', 'Gps Person', 'employee', $2, false)", [empUser, gpsEmp]);
+  });
+
+  it("records the office location change history (old + new + who)", async () => {
+    const r = await db.query<{ changed_by: string; new_values: { office_radius_m: number } }>("select changed_by, new_values from office_location_history order by id desc limit 1");
+    expect(r.rows[0].changed_by).toBe(admin);
+    expect(r.rows[0].new_values.office_radius_m).toBe(100);
+  });
+
+  it("rejects check-in outside the radius and logs the attempt", async () => {
+    await asUser(db, empUser, async () => {
+      const r = await selfCall("check_in", FAR, 10);
+      expect(r).toMatchObject({ ok: false, result: "outside_radius" });
+      expect(Number(r.distance_m)).toBeGreaterThan(900);
+      const ev = await db.query("select * from attendance_geo_events where result = 'outside_radius'");
+      expect(ev.rows.length).toBe(1);
+      expect((await db.query("select * from attendance where employee_id = $1", [gpsEmp])).rows.length).toBe(0);
+    });
+  });
+
+  it("asks for a retry when accuracy is too low", async () => {
+    await asUser(db, empUser, async () => {
+      expect(await selfCall("check_in", NEAR, 300)).toMatchObject({ ok: false, result: "low_accuracy" });
+    });
+  });
+
+  it("requires a location when GPS verification is on", async () => {
+    await asUser(db, empUser, async () => {
+      await expect(selfCall("check_in", null, null)).rejects.toThrow(/Location is required/);
+    });
+  });
+
+  it("accepts check-in inside the radius with server time, then blocks a duplicate", async () => {
+    await asUser(db, empUser, async () => {
+      const r = await selfCall("check_in", NEAR, 12);
+      expect(r).toMatchObject({ ok: true, result: "accepted", gps_verified: true });
+      expect(Number(r.distance_m)).toBeLessThan(100);
+      const a = await db.query<{ entry_method: string; actual_in: string }>("select entry_method, actual_in::text from attendance where employee_id = $1", [gpsEmp]);
+      expect(a.rows[0].entry_method).toBe("self_gps");
+      expect(await selfCall("check_in", NEAR, 12)).toMatchObject({ ok: false, result: "duplicate" });
+    });
+  });
+
+  it("only shows the employee their own data", async () => {
+    await asUser(db, empUser, async () => {
+      expect((await db.query("select * from employees")).rows.length).toBe(0);
+      const rows = await db.query<{ employee_id: string }>("select employee_id from attendance");
+      expect(rows.rows.every((x) => x.employee_id === gpsEmp)).toBe(true);
+      expect((await db.query("select * from payroll_items")).rows.length).toBe(0);
+      expect((await db.query("select * from audit_logs")).rows.length).toBe(0);
+    });
+  });
+
+  it("entry operators cannot edit a GPS-verified record", async () => {
+    await asUser(db, entry, async () => {
+      const r = await db.query("update attendance set notes = 'x' where employee_id = $1", [gpsEmp]);
+      expect(r.affectedRows).toBe(0);
+    });
+  });
+
+  it("accepts check-out inside the radius", async () => {
+    await db.query("update attendance set actual_in = '00:00' where employee_id = $1", [gpsEmp]); // simulate an earlier check-in
+    await asUser(db, empUser, async () => {
+      const r = await selfCall("check_out", NEAR, 20);
+      expect(r).toMatchObject({ ok: true, result: "accepted" });
+      expect(await selfCall("check_out", NEAR, 20)).toMatchObject({ ok: false, result: "duplicate" });
+    });
+  });
+
+  it("works without location when the admin turns GPS verification off (marked as not GPS-verified)", async () => {
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set gps_required = false where id = 1");
+      await db.query("delete from attendance where employee_id = $1", [gpsEmp]);
+    });
+    await asUser(db, empUser, async () => {
+      const r = await selfCall("check_in", null, null);
+      expect(r).toMatchObject({ ok: true, gps_verified: false });
+      const a = await db.query<{ entry_method: string }>("select entry_method from attendance where employee_id = $1", [gpsEmp]);
+      expect(a.rows[0].entry_method).toBe("self");
+    });
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set gps_required = true where id = 1");
+    });
+  });
+
+  it("does not let staff-only users call self-service or employees act as staff", async () => {
+    await asUser(db, admin, async () => {
+      await expect(selfCall("check_in", NEAR, 10)).rejects.toThrow(/not linked/);
+    });
+    await asUser(db, empUser, async () => {
+      await expect(db.query("select public.close_attendance(current_date - 1)")).rejects.toThrow(/Only administrators/);
+    });
+  });
+});

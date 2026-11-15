@@ -15,8 +15,12 @@ import postgres from "postgres";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-config({ path: ".env.local" });
-config();
+// --env <file> selects the target (e.g. .env.staging.local). Default: .env.local.
+const envIdx = process.argv.indexOf("--env");
+const ENV_FILE = envIdx > 0 ? process.argv[envIdx + 1] : ".env.local";
+config({ path: ENV_FILE, override: true });
+
+const PRODUCTION_REF = "mcenelqeuaffxqvszjph";
 
 const DIR = path.join(process.cwd(), "supabase", "migrations");
 
@@ -42,6 +46,11 @@ async function main() {
   const url = process.env.SUPABASE_DB_URL;
   if (!url) fail("SUPABASE_DB_URL is not set in .env.local (see the comment at the top of scripts/migrate.ts).");
   const statusOnly = process.argv.includes("--status");
+  // Safety: a staging env file must never point at the production project.
+  if (ENV_FILE.includes("staging") && url.includes(PRODUCTION_REF)) {
+    fail(`${ENV_FILE} points at the PRODUCTION database. Aborting.`);
+  }
+  console.log(`Target: ${url.replace(/\/\/([^:]+):[^@]*@/, "//$1:****@")}  (from ${ENV_FILE})`);
   const sql = postgres(url, { ssl: "require", max: 1, onnotice: () => undefined, prepare: false });
 
   try {
