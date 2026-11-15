@@ -50,7 +50,7 @@ async function main() {
   if (ENV_FILE.includes("staging") && url.includes(PRODUCTION_REF)) {
     fail(`${ENV_FILE} points at the PRODUCTION database. Aborting.`);
   }
-  console.log(`Target: ${url.replace(/\/\/([^:]+):[^@]*@/, "//$1:****@")}  (from ${ENV_FILE})`);
+  console.log(`Target: ${url.replace(/\/\/([^:/]+):.*@/, "//$1:****@")}  (from ${ENV_FILE})`);
   const sql = postgres(url, { ssl: "require", max: 1, onnotice: () => undefined, prepare: false });
 
   try {
