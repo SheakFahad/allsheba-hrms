@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/page-header";
 import { ToneBadge } from "@/components/shared/status-badge";
@@ -8,6 +8,8 @@ import { requirePageRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveEmployees } from "@/lib/data";
 import { ExpensePermissionSwitch } from "@/components/finance/expense-permission-switch";
+import { EmployeeAccountsPanel } from "@/components/users/employee-accounts";
+import { loginUrl } from "@/lib/site";
 import { formatDateTime } from "@/lib/time";
 import type { Profile } from "@/lib/types";
 import { createUser, resetUserPassword, updateUser } from "../system-actions";
@@ -34,29 +36,37 @@ const RESET_FIELDS: FieldDef[] = [
   { name: "password", label: "New temporary password", type: "password", required: true, hint: "The user must change it at next sign-in." },
 ];
 
-const PERMISSIONS: [string, string, string][] = [
-  ["Quick attendance entry & today's overview", "✓", "✓"],
-  ["Edit own entries (within policy window)", "✓", "✓"],
-  ["Correction requests", "Review", "Submit"],
-  ["Leave applications", "Approve / reject", "Submit"],
-  ["Employee directory (name, ID, department)", "✓", "✓"],
-  ["Personal details, documents, salary", "✓", "—"],
-  ["Payroll & payslips", "✓", "—"],
-  ["Reports & exports", "All", "Daily / attendance only"],
-  ["Users, settings, audit logs", "✓", "—"],
-  ["Expenses & expense vouchers", "Full control, confirm payments", "Only if granted (record + print; cannot confirm)"],
-  ["Salary payments & cost reports", "✓", "—"],
-  ["Location restriction (GPS)", "None — works from anywhere", "None (shared office computer, entries marked “not GPS-verified”)"],
+const PERMISSIONS: [string, string, string, string][] = [
+  ["Quick attendance entry & today's overview", "✓", "✓", "—"],
+  ["Own check-in / check-out", "—", "—", "✓ GPS-verified, server time"],
+  ["Own profile & attendance history", "—", "—", "✓ view only"],
+  ["Today's Present List", "✓", "✓", "✓ names & times only"],
+  ["Edit own entries (within policy window)", "✓", "✓", "—"],
+  ["Correction requests", "Review", "Submit", "—"],
+  ["Leave applications", "Approve / reject", "Submit", "Own only (pending until approved)"],
+  ["Employee directory (name, ID, department)", "✓", "✓", "—"],
+  ["Personal details, documents, salary", "✓", "—", "—"],
+  ["Payroll & payslips", "✓", "—", "—"],
+  ["Reports & exports", "All", "Daily / attendance only", "—"],
+  ["Users, settings, audit logs", "✓", "—", "—"],
+  ["Expenses & expense vouchers", "Full control, confirm payments", "Only if granted (record + print; cannot confirm)", "—"],
+  ["Salary payments & cost reports", "✓", "—", "—"],
+  ["Location restriction (GPS)", "None — works from anywhere", "None (shared office computer, entries marked “not GPS-verified”)", "Must be inside the office radius"],
 ];
 
 export default async function UsersPage() {
   const me = await requirePageRole("admin");
   const supabase = await createClient();
-  const [{ data }, employees] = await Promise.all([
+  const [{ data }, employees, url] = await Promise.all([
     supabase.from("profiles").select("*").order("role").order("username"),
     getActiveEmployees(),
+    loginUrl(),
   ]);
   const users = (data ?? []) as Profile[];
+  const linkedIds = new Set(users.map((u) => u.employee_id).filter(Boolean));
+  const candidates = employees
+    .filter((e) => !linkedIds.has(e.id))
+    .map((e) => ({ id: e.id, name: e.full_name, code: e.employee_code, department: e.departments?.name ?? null }));
   const empName = new Map(employees.map((e) => [e.id, `${e.full_name} (${e.employee_code})`]));
   const EMP_FIELD: FieldDef = {
     name: "employee_id",
@@ -71,7 +81,7 @@ export default async function UsersPage() {
     <>
       <PageHeader
         title="User Management"
-        description="Sign-in accounts for the Admin and Entry panels."
+        description="Sign-in accounts for the Admin and Entry panels and for individual employees."
         actions={<RecordDialog title="New user" fields={createFields} initial={{ username: "", full_name: "", role: "employee", employee_id: "", password: "" }} action={createUser} triggerLabel="Add user" />}
       />
       <Card className="mb-5 gap-0 py-0">
@@ -106,16 +116,25 @@ export default async function UsersPage() {
           </Table>
         </div>
       </Card>
+      <Card className="mb-5">
+        <CardHeader>
+          <CardTitle>Employee login accounts</CardTitle>
+          <CardDescription>Create a personal login for existing employees. Each account is linked to the employee&apos;s existing record; nothing in the employee record or attendance history changes.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EmployeeAccountsPanel candidates={candidates} loginUrl={url} />
+        </CardContent>
+      </Card>
       <Card className="gap-0 pb-0">
         <CardHeader className="border-b pb-4">
           <CardTitle>Role permissions</CardTitle>
           <CardDescription>Enforced on the server and by database row-level security, not only by hiding buttons.</CardDescription>
         </CardHeader>
         <Table>
-          <TableHeader><TableRow><TableHead className="pl-4">Capability</TableHead><TableHead>Administrator</TableHead><TableHead className="pr-4">Entry operator</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead className="pl-4">Capability</TableHead><TableHead>Administrator</TableHead><TableHead>Entry operator</TableHead><TableHead className="pr-4">Employee</TableHead></TableRow></TableHeader>
           <TableBody>
-            {PERMISSIONS.map(([cap, a, e]) => (
-              <TableRow key={cap}><TableCell className="pl-4">{cap}</TableCell><TableCell>{a}</TableCell><TableCell className="pr-4">{e}</TableCell></TableRow>
+            {PERMISSIONS.map(([cap, a, e, emp]) => (
+              <TableRow key={cap}><TableCell className="pl-4">{cap}</TableCell><TableCell>{a}</TableCell><TableCell>{e}</TableCell><TableCell className="pr-4">{emp}</TableCell></TableRow>
             ))}
           </TableBody>
         </Table>

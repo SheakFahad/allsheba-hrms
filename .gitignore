@@ -43,3 +43,6 @@ next-env.d.ts
 
 # one-time account scripts containing temporary passwords
 *.local.sql
+
+# database backups (contain real data — never commit)
+/backups/

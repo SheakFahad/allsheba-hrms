@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertRole } from "@/lib/auth";
@@ -255,5 +256,82 @@ export async function resetUserPassword(input: unknown) {
     await supabase.rpc("log_event", { p_action: "reset_password", p_entity: "profiles", p_entity_id: id, p_summary: "Administrator reset a user password" });
     revalidatePath("/admin/users");
     return { ok: true as const, message: "Password reset. The user must choose a new password at next sign-in." };
+  });
+}
+
+/* ---------------- Employee login accounts ---------------- */
+
+export interface CreatedAccount {
+  employee_id: string;
+  name: string;
+  code: string;
+  username: string;
+  password: string;
+}
+
+/** Readable temporary password (no 0/O/1/l/I), always with letters and digits. */
+function temporaryPassword(): string {
+  const letters = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const all = letters + digits;
+  const pick = (s: string) => s[randomInt(s.length)];
+  const chars = [pick(letters), pick(letters), pick(digits), pick(digits), ...Array.from({ length: 6 }, () => pick(all))];
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+/**
+ * Creates one Employee login per selected employee that has none yet.
+ * Existing employee records are only read, never changed. Username = the
+ * Employee ID in lower case; the temporary password is shown once and must be
+ * changed at first sign-in.
+ */
+export async function createEmployeeAccounts(input: unknown) {
+  return runAction(z.object({ employee_ids: z.array(uuid).min(1, "Select at least one employee").max(500) }), input, async ({ employee_ids }) => {
+    await assertRole("admin");
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const [{ data: emps }, { data: linked }, { data: taken }] = await Promise.all([
+      supabase.from("employees").select("id, full_name, employee_code").in("id", employee_ids).is("archived_at", null),
+      admin.from("profiles").select("employee_id").in("employee_id", employee_ids),
+      admin.from("profiles").select("username"),
+    ]);
+    const alreadyLinked = new Set((linked ?? []).map((p) => p.employee_id as string));
+    const usernames = new Set((taken ?? []).map((p) => p.username as string));
+    const created: CreatedAccount[] = [];
+    const failed: { name: string; error: string }[] = [];
+
+    for (const e of (emps ?? []) as { id: string; full_name: string; employee_code: string }[]) {
+      if (alreadyLinked.has(e.id)) continue;
+      const base = e.employee_code.toLowerCase().replace(/[^a-z0-9._-]/g, "-").slice(0, 28) || "emp";
+      let username = base.length >= 3 ? base : `emp-${base}`;
+      for (let n = 2; usernames.has(username); n++) username = `${base}-${n}`;
+      const password = temporaryPassword();
+      const { data, error } = await admin.auth.admin.createUser({ email: usernameToEmail(username), password, email_confirm: true });
+      if (error || !data.user) {
+        failed.push({ name: e.full_name, error: error?.message ?? "Could not create the login." });
+        continue;
+      }
+      const ins = await admin.from("profiles").insert({
+        id: data.user.id, username, full_name: e.full_name, role: "employee", must_change_password: true, employee_id: e.id,
+      });
+      if (ins.error) {
+        await admin.auth.admin.deleteUser(data.user.id);
+        failed.push({ name: e.full_name, error: ins.error.message });
+        continue;
+      }
+      usernames.add(username);
+      created.push({ employee_id: e.id, name: e.full_name, code: e.employee_code, username, password });
+      await supabase.rpc("log_event", {
+        p_action: "create_user", p_entity: "profiles", p_entity_id: data.user.id,
+        p_summary: `Created employee login ${username} for ${e.full_name} (${e.employee_code})`,
+      });
+    }
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/employees");
+    return { created, failed };
   });
 }

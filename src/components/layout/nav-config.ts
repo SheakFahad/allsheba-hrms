@@ -1,7 +1,7 @@
 import {
   BarChart3, Building2, CalendarCheck2, CalendarDays, CalendarRange, ClipboardList, ClockAlert,
   FileClock, History, LayoutDashboard, Printer, ScrollText, Settings, UserCog, Users, Wallet,
-  PlaneTakeoff, MapPin, MapPinned, Banknote, Receipt, PieChart, type LucideIcon,
+  PlaneTakeoff, MapPin, MapPinned, Banknote, Receipt, PieChart, UserRound, UsersRound, type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/lib/types";
 
@@ -76,6 +76,15 @@ export const NAV: Record<AppRole, NavGroup[]> = {
     { label: "Finance", items: [{ href: "/entry/expenses", label: "Daily Expenses", icon: Receipt }] },
   ],
   employee: [
-    { label: "My Attendance", items: [{ href: "/me", label: "Check In / Check Out", icon: MapPin, exact: true }] },
+    {
+      label: "My Attendance",
+      items: [
+        { href: "/me", label: "Check In / Check Out", icon: MapPin, exact: true },
+        { href: "/me/attendance", label: "Attendance History", icon: History },
+        { href: "/me/present", label: "Present Today", icon: UsersRound },
+      ],
+    },
+    { label: "Leave", items: [{ href: "/me/leave", label: "My Leave", icon: PlaneTakeoff }] },
+    { label: "Account", items: [{ href: "/me/profile", label: "My Profile", icon: UserRound }] },
   ],
 };

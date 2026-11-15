@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertRole } from "@/lib/auth";
-import { check, runAction } from "@/lib/action";
+import { ActionError, check, runAction } from "@/lib/action";
 import { createClient } from "@/lib/supabase/server";
 import { isoDate, optionalText, uuid } from "@/lib/validation";
 
 function revalidateLeave() {
-  for (const p of ["/admin/leave", "/entry/leave", "/admin", "/admin/attendance"]) revalidatePath(p);
+  for (const p of ["/admin/leave", "/entry/leave", "/admin", "/admin/attendance", "/me/leave"]) revalidatePath(p);
 }
 
 const applySchema = z
@@ -26,8 +26,13 @@ const applySchema = z
 
 export async function applyLeave(input: unknown) {
   return runAction(applySchema, input, async ({ approve_now, ...v }) => {
-    const user = await assertRole("admin", "entry");
+    const user = await assertRole("admin", "entry", "employee");
     const supabase = await createClient();
+    if (user.role === "employee") {
+      // Employees apply only for themselves; the database (RLS + trigger) enforces this as well.
+      const { data: me } = await supabase.rpc("my_employee_id");
+      if (!me || me !== v.employee_id) throw new ActionError("You can only apply for your own leave.");
+    }
     const { data } = check(await supabase.from("leave_requests").insert({ ...v, status: "pending" }).select("id").single());
     if (approve_now && user.role === "admin") {
       check(await supabase.rpc("review_leave", { p_id: data!.id, p_approve: true, p_note: "Approved on entry by admin" }));
@@ -49,7 +54,7 @@ export async function reviewLeave(input: unknown) {
 
 export async function cancelLeave(input: unknown) {
   return runAction(z.object({ id: uuid, note: z.string().trim().max(500).optional() }), input, async (v) => {
-    await assertRole("admin", "entry");
+    await assertRole("admin", "entry", "employee");
     const supabase = await createClient();
     check(await supabase.rpc("cancel_leave", { p_id: v.id, p_note: v.note || null }));
     revalidateLeave();

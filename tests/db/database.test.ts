@@ -653,3 +653,89 @@ describe("expenses, salary payments and vouchers", () => {
     });
   });
 });
+
+describe("employee portal: own profile, own leave, today's present list", () => {
+  let emp = "";
+  let user = "";
+  let otherUser = "";
+  beforeAll(async () => {
+    await asUser(db, admin, async () => {
+      emp = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date, shift_id) values ('Portal Person', current_date - 90, (select id from shifts where is_default)) returning id",
+      )).rows[0].id;
+    });
+    user = (await db.query<{ id: string }>("insert into auth.users (email) values ('portal@hrms.local') returning id")).rows[0].id;
+    await db.query("insert into profiles (id, username, full_name, role, employee_id, must_change_password) values ($1, 'portal', 'Portal Person', 'employee', $2, false)", [user, emp]);
+    otherUser = (await db.query<{ id: string }>("insert into auth.users (email) values ('portal2@hrms.local') returning id")).rows[0].id;
+    await db.query("insert into profiles (id, username, full_name, role, employee_id, must_change_password) values ($1, 'portal2', 'Rahim', 'employee', $2, false)", [otherUser, empA]);
+  });
+
+  it("shows the employee their own profile only", async () => {
+    await asUser(db, user, async () => {
+      const p = (await db.query<{ p: { code: string; name: string } }>("select public.my_profile() as p")).rows[0].p;
+      expect(p.name).toBe("Portal Person");
+      expect(p.code).toMatch(/^ASL-/);
+      expect(JSON.stringify(p)).not.toMatch(/salary|national_id/);
+    });
+    await asUser(db, admin, async () => {
+      await expect(db.query("select public.my_profile()")).rejects.toThrow(/not linked/);
+    });
+  });
+
+  it("lets an employee apply for their own leave (always pending) but not for someone else", async () => {
+    await asUser(db, user, async () => {
+      const types = await db.query<{ id: string }>("select id from leave_types");
+      expect(types.rows.length).toBeGreaterThan(0);
+      const t = types.rows[0].id;
+      const r = await db.query<{ status: string; applied_by: string }>(
+        "insert into leave_requests (employee_id, leave_type_id, start_date, end_date, status) values ($1, $2, current_date + 30, current_date + 30, 'pending') returning status, applied_by",
+        [emp, t],
+      );
+      expect(r.rows[0].status).toBe("pending");
+      expect(r.rows[0].applied_by).toBe(user);
+      await expect(
+        db.query("insert into leave_requests (employee_id, leave_type_id, start_date, end_date) values ($1, $2, current_date + 40, current_date + 40)", [empA, t]),
+      ).rejects.toThrow(/row-level security/);
+      // Asking for "approved" is ignored: the trigger forces every employee request to pending.
+      const forced = await db.query<{ status: string }>(
+        "insert into leave_requests (employee_id, leave_type_id, start_date, end_date, status) values ($1, $2, current_date + 50, current_date + 50, 'approved') returning status",
+        [emp, t],
+      );
+      expect(forced.rows[0].status).toBe("pending");
+      const mine = await db.query<{ employee_id: string }>("select employee_id from leave_requests");
+      expect(mine.rows.every((x) => x.employee_id === emp)).toBe(true);
+      expect((await db.query("update leave_requests set status = 'approved'")).affectedRows).toBe(0);
+      const bal = await db.query<{ pending: string }>("select pending from public.my_leave_balances(extract(year from current_date + 30)::int) where leave_type_id = $1", [t]);
+      expect(Number(bal.rows[0].pending)).toBeGreaterThan(0);
+    });
+  });
+
+  it("lets an employee cancel only their own pending request", async () => {
+    const id = (await db.query<{ id: string }>("select id from leave_requests where employee_id = $1 and status = 'pending' limit 1", [emp])).rows[0].id;
+    await asUser(db, otherUser, async () => {
+      await expect(db.query("select public.cancel_leave($1)", [id])).rejects.toThrow(/cannot cancel/);
+    });
+    await asUser(db, user, async () => {
+      await db.query("select public.cancel_leave($1)", [id]);
+    });
+    expect((await db.query<{ status: string }>("select status from leave_requests where id = $1", [id])).rows[0].status).toBe("cancelled");
+  });
+
+  it("shares today's present list (names and times only) with employees and staff", async () => {
+    const d = await today();
+    await asUser(db, admin, async () => {
+      await db.query("delete from attendance where employee_id = $1 and attendance_date = $2", [empB, d]);
+      await db.query("insert into attendance (employee_id, attendance_date, actual_in, status) values ($1, $2, '09:00', 'present')", [empB, d]);
+    });
+    for (const u of [user, entry, admin]) {
+      await asUser(db, u, async () => {
+        const r = await db.query<{ full_name: string }>("select * from public.today_present_list()");
+        expect(r.rows.some((x) => x.full_name === "Karim Ahmed")).toBe(true);
+      });
+    }
+    await asUser(db, user, async () => {
+      // Still cannot read other employees' attendance rows directly.
+      expect((await db.query("select * from attendance where employee_id = $1", [empB])).rows.length).toBe(0);
+    });
+  });
+});

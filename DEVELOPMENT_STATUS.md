@@ -39,6 +39,12 @@ Next.js 16.4.6 (App Router, `src/proxy.ts` replaces middleware) · React 19.3 ·
 - Accounts `admin` (admin) and `user` (entry) created; both must change password at first sign-in.
 - GitHub: https://github.com/SheakFahad/allsheba-hrms (private) · Vercel: https://allsheba-hrms.vercel.app (live, owner confirmed).
 
+## Employee accounts & portal (staging only, 2026-11-15 — awaiting owner approval)
+- Migration `0014_employee_portal.sql` (additive: new RLS policies + functions, `cancel_leave()` extended; no table or row changed).
+- User Management → **Employee login accounts**: bulk-create logins for existing employees (username = Employee ID, secure temporary password shown once, forced change at first sign-in); Employee profile → **Create login account** for one employee. Needs `SUPABASE_SERVICE_ROLE_KEY` on the server.
+- Employee portal `/me`: Check In / Check Out (GPS), Attendance History, Present Today (names + check-in time only), My Leave (apply / cancel pending, balances), My Profile (read only).
+- `npm run db:backup [-- --env .env.staging.local] [-- --compare <file>]` — read-only JSON backup + data preservation report. Run before every production migration.
+
 ## Remaining owner actions
 1. Supabase → Authentication → Email: disable "Allow new users to sign up".
 2. Supabase → Authentication → URL Configuration: Site URL = https://allsheba-hrms.vercel.app

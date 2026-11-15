@@ -23,7 +23,10 @@ export function LeaveApplyForm({
   isAdmin,
   balances,
   onDone,
+  selfEmployeeId,
 }: {
+  /** Employee portal: the signed-in employee applies for themselves (no picker). */
+  selfEmployeeId?: string;
   employees: PickerEmployee[];
   types: LeaveType[];
   today: string;
@@ -33,7 +36,7 @@ export function LeaveApplyForm({
 }) {
   const router = useRouter();
   const active = types.filter((t) => t.is_active);
-  const [employee, setEmployee] = React.useState<string | null>(null);
+  const [employee, setEmployee] = React.useState<string | null>(selfEmployeeId ?? null);
   const [typeId, setTypeId] = React.useState(active[0]?.id ?? "");
   const [start, setStart] = React.useState(today);
   const [end, setEnd] = React.useState(today);
@@ -56,7 +59,7 @@ export function LeaveApplyForm({
       });
       if (!r.ok) return void toast.error(r.error);
       toast.success(r.message ?? "Saved");
-      setEmployee(null);
+      if (!selfEmployeeId) setEmployee(null);
       setReason("");
       setHalf(false);
       router.refresh();
@@ -68,9 +71,11 @@ export function LeaveApplyForm({
 
   return (
     <form onSubmit={submit} className="grid gap-4">
-      <Field label="Employee" htmlFor="lv_emp" required>
-        <EmployeePicker id="lv_emp" employees={employees} value={employee} onChange={setEmployee} />
-      </Field>
+      {!selfEmployeeId && (
+        <Field label="Employee" htmlFor="lv_emp" required>
+          <EmployeePicker id="lv_emp" employees={employees} value={employee} onChange={setEmployee} />
+        </Field>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Leave type"

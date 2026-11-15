@@ -13,7 +13,8 @@
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate:staging": "tsx scripts/migrate.ts --env .env.staging.local",
-    "db:seed:staging": "tsx scripts/seed-staging.ts"
+    "db:seed:staging": "tsx scripts/seed-staging.ts",
+    "db:backup": "tsx scripts/backup.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.5",

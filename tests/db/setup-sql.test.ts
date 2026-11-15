@@ -16,5 +16,5 @@ it("supabase/setup.sql applies in a single run", async () => {
   const sql = readFileSync("supabase/setup.sql", "utf8").replace(/create extension if not exists pgcrypto;/g, "");
   await db.exec(sql);
   const r = await db.query<{ n: number }>("select count(*)::int as n from information_schema.tables where table_schema = 'public'");
-  expect(r.rows[0].n).toBe(24); // 19 core + 2 GPS + expense_categories, expenses, salary_payments
+  expect(r.rows[0].n).toBe(24); // 19 core + 2 GPS + expense_categories, expenses, salary_payments (0014 adds no tables)
 }, 120_000);

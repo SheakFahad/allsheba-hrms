@@ -25,6 +25,8 @@ import { isMonth, param } from "@/lib/params";
 import type {
   AuditLog, Employee, EmployeeDocument, EmployeeEvent, EmployeePersonal, LeaveRequest, PayrollItem, SalaryStructure,
 } from "@/lib/types";
+import { CreateEmployeeLoginButton } from "@/components/users/employee-accounts";
+import { loginUrl } from "@/lib/site";
 import { ArchiveControls, DocumentActions, DocumentUpload, SalaryDialog } from "./profile-actions";
 
 export const metadata: Metadata = { title: "Employee profile" };
@@ -67,7 +69,11 @@ export default async function EmployeeProfilePage({ params, searchParams }: Page
   const settings = await getSettings();
   const today = todayISO(settings.timezone);
 
-  const { data: emp } = await supabase.from("employees").select(EMPLOYEE_SELECT).eq("id", id).maybeSingle<Employee>();
+  const [{ data: emp }, { data: login }, url] = await Promise.all([
+    supabase.from("employees").select(EMPLOYEE_SELECT).eq("id", id).maybeSingle<Employee>(),
+    supabase.from("profiles").select("username, is_active").eq("employee_id", id).maybeSingle<{ username: string; is_active: boolean }>(),
+    loginUrl(),
+  ]);
   if (!emp) notFound();
   const { data: salaries } = await supabase
     .from("salary_structures").select("*").eq("employee_id", id).order("effective_from", { ascending: false });
@@ -98,6 +104,11 @@ export default async function EmployeeProfilePage({ params, searchParams }: Page
         }
         actions={
           <>
+            {login ? (
+              <Button variant="outline" asChild><Link href="/admin/users">Login: @{login.username}{login.is_active ? "" : " (inactive)"}</Link></Button>
+            ) : (
+              !emp.archived_at && <CreateEmployeeLoginButton employeeId={id} loginUrl={url} />
+            )}
             <ExportButton type="employee_profile" params={{ employee: id }} label="Profile report" />
             <ArchiveControls id={id} archived={!!emp.archived_at} name={emp.full_name} />
             <Button asChild><Link href={`/admin/employees/${id}/edit`}><Pencil /> Edit</Link></Button>
