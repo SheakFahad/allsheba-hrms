@@ -1,9 +1,9 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requirePageRole } from "@/lib/auth";
-import { getBranding } from "@/lib/data";
+import { getPublicBranding } from "@/lib/data";
 
 export default async function EntryLayout({ children }: LayoutProps<"/entry">) {
-  const [user, branding] = await Promise.all([requirePageRole("entry"), getBranding()]);
+  const [user, branding] = await Promise.all([requirePageRole("entry"), getPublicBranding()]);
   return (
     <AppShell
       role="entry"

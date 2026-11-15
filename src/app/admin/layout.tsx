@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requirePageRole } from "@/lib/auth";
-import { getBranding } from "@/lib/data";
+import { getPublicBranding } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
@@ -9,7 +9,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const supabase = await createClient();
   const [user, branding, corrections, leaves] = await Promise.all([
     requirePageRole("admin"),
-    getBranding(),
+    getPublicBranding(),
     supabase.from("attendance_corrections").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
