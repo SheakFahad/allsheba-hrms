@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Banknote, Building2, FileText, Lock, Receipt, SlidersHorizontal, User, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, Building2, FileText, Lock, PenLine, Receipt, SlidersHorizontal, User, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { requirePageRole } from "@/lib/auth";
@@ -14,6 +14,8 @@ const FINANCE_REPORTS = new Set(["cost_report", "salary_payments"]);
 const FINANCE_CARDS = [
   { href: "/admin/expenses", label: "Daily Expense Voucher", description: "Record a daily or monthly expense and print its voucher — two copies on one A4 sheet.", cta: "Open expenses", icon: Receipt },
   { href: "/admin/salary-payments", label: "Salary Payment Voucher", description: "Record a salary payment (full or partial) and print the two-copy A4 voucher.", cta: "Open salary payments", icon: Banknote },
+  { href: "/admin/vouchers/expense/blank", label: "Blank Expense Voucher", description: "Empty two-copy A4 expense voucher to print and fill in by hand with a pen.", cta: "Open blank voucher", icon: PenLine },
+  { href: "/admin/vouchers/salary/blank", label: "Blank Salary Payment Voucher", description: "Empty two-copy A4 salary voucher to print and fill in by hand with a pen.", cta: "Open blank voucher", icon: PenLine },
   { href: "/admin/finance", label: "Total Cost & Expense Report", description: "Expenses, salary paid / partial / pending and daily, monthly, yearly cost — Print, PDF, Excel, CSV.", cta: "Open report", icon: Wallet },
 ];
 

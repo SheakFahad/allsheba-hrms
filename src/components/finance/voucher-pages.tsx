@@ -107,3 +107,75 @@ export async function SalaryVoucherPage({ id, backHref }: { id: string; backHref
     </>
   );
 }
+
+const SIGNATURES = ["Prepared By", "Checked By", "Approved By", "Received By"];
+
+/** Blank expense voucher to print and fill in by hand (offline). */
+export async function BlankExpenseVoucherPage({ backHref, backLabel }: { backHref: string; backLabel: string }) {
+  const branding = await voucherBranding();
+  return (
+    <>
+      <PageHeader title="Blank Expense Voucher" description="Print and fill in by hand with a pen." back={{ href: backHref, label: backLabel }} />
+      <VoucherSheet
+        b={branding}
+        v={{
+          blank: true,
+          title: "Expense Voucher",
+          voucherNo: "",
+          date: "",
+          status: "pending",
+          rows: [
+            { label: "Name", value: "" },
+            { label: "Category", value: "" },
+            { label: "Employee", value: "" },
+            { label: "Designation", value: "" },
+            { label: "Expense type", value: "", choices: ["Daily", "Monthly"] },
+            { label: "Period", value: "" },
+            { label: "Payment method", value: "", full: true, choices: Object.values(EXPENSE_METHOD_LABELS) },
+            { label: "Comments", value: "", full: true },
+          ],
+          details: { label: "Full details", value: "" },
+          amount: 0,
+          amountWords: "",
+          signatures: SIGNATURES.map((label) => ({ label })),
+          fileName: "blank-expense-voucher",
+        }}
+      />
+    </>
+  );
+}
+
+/** Blank salary payment voucher to print and fill in by hand (offline). */
+export async function BlankSalaryVoucherPage({ backHref, backLabel }: { backHref: string; backLabel: string }) {
+  const branding = await voucherBranding();
+  return (
+    <>
+      <PageHeader title="Blank Salary Payment Voucher" description="Print and fill in by hand with a pen." back={{ href: backHref, label: backLabel }} />
+      <VoucherSheet
+        b={branding}
+        v={{
+          blank: true,
+          title: "Salary Payment Voucher",
+          voucherNo: "",
+          date: "",
+          status: "pending",
+          rows: [
+            { label: "Employee name", value: "" },
+            { label: "Employee ID", value: "" },
+            { label: "Designation", value: "" },
+            { label: "Salary month", value: "" },
+            { label: "Payment date", value: "" },
+            { label: "Payment type", value: "", choices: ["Full", "Partial"] },
+            { label: "Payment method", value: "", full: true, choices: Object.values(SALARY_METHOD_LABELS) },
+            { label: "Comments", value: "", full: true },
+          ],
+          details: { label: "Notes", value: "" },
+          amount: 0,
+          amountWords: "",
+          signatures: [...SIGNATURES, "Employee Signature"].map((label) => ({ label })),
+          fileName: "blank-salary-voucher",
+        }}
+      />
+    </>
+  );
+}

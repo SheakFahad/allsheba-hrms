@@ -12,13 +12,15 @@ export interface VoucherData {
   voucherNo: string;
   date: string;
   status: "pending" | "confirmed" | "cancelled";
-  /** Two-column information grid (label → value). */
-  rows: { label: string; value: string }[];
+  /** Two-column information grid (label → value). `full` spans both columns; `choices` prints tick boxes. */
+  rows: { label: string; value: string; full?: boolean; choices?: string[] }[];
   details?: { label: string; value: string } | null;
   amount: number;
   amountWords: string;
   signatures: { label: string; name?: string | null }[];
   fileName: string;
+  /** Blank form for filling in by hand with a pen (no values, writing space instead). */
+  blank?: boolean;
 }
 
 export interface VoucherBranding {
@@ -38,6 +40,7 @@ const STATUS_NOTE: Record<VoucherData["status"], string> = {
 
 /** One voucher (half of an A4 sheet). */
 function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy: string }) {
+  const blankLine = <span className="inline-block w-[38mm] border-b border-neutral-500 align-bottom">&nbsp;</span>;
   return (
     <div className="relative flex h-full flex-col px-[10mm] pt-[7mm] pb-[6mm] text-[10.5px] leading-snug text-neutral-900">
       {v.status === "cancelled" && (
@@ -59,15 +62,36 @@ function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy:
       </header>
 
       <div className="mt-2 flex justify-between text-[11px]">
-        <p><span className="text-neutral-500">Voucher No:</span> <b className="tabular-nums">{v.voucherNo}</b></p>
-        <p><span className="text-neutral-500">Date:</span> <b className="tabular-nums">{v.date}</b></p>
+        <p><span className="text-neutral-500">Voucher No:</span> {v.blank ? blankLine : <b className="tabular-nums">{v.voucherNo}</b>}</p>
+        <p><span className="text-neutral-500">Date:</span> {v.blank ? blankLine : <b className="tabular-nums">{v.date}</b>}</p>
       </div>
 
-      <dl className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-1">
+      <dl className={cn("mt-1.5 grid grid-cols-2 gap-x-6", v.blank ? "gap-y-0" : "gap-y-1")}>
         {v.rows.map((r) => (
-          <div key={r.label} className="flex gap-2 border-b border-dotted border-neutral-300 pb-0.5">
+          <div
+            key={r.label}
+            className={cn(
+              "flex items-end gap-2 pb-0.5",
+              r.full && "col-span-2",
+              !r.choices && (v.blank ? "border-b border-neutral-500" : "border-b border-dotted border-neutral-300"),
+              v.blank && "min-h-[8mm]",
+            )}
+          >
             <dt className="w-[28mm] shrink-0 text-neutral-500">{r.label}</dt>
-            <dd className="min-w-0 flex-1 font-semibold break-words">{r.value || "—"}</dd>
+            <dd className="min-w-0 flex-1 font-semibold break-words">
+              {r.choices ? (
+                <span className="flex flex-wrap gap-x-4 gap-y-1 font-normal">
+                  {r.choices.map((c) => (
+                    <span key={c} className="inline-flex items-center gap-1.5">
+                      <span className="inline-block size-[3.2mm] border border-neutral-700" />
+                      {c}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                r.value || (v.blank ? "" : "—")
+              )}
+            </dd>
           </div>
         ))}
       </dl>
@@ -75,16 +99,18 @@ function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy:
       {v.details && (
         <div className="mt-1.5">
           <p className="text-neutral-500">{v.details.label}</p>
-          <p className="line-clamp-3 min-h-[9mm] rounded border border-neutral-200 px-2 py-1 whitespace-pre-wrap">{v.details.value || "—"}</p>
+          <p className={cn("line-clamp-3 rounded border px-2 py-1 whitespace-pre-wrap", v.blank ? "min-h-[15mm] border-neutral-500" : "min-h-[9mm] border-neutral-200")}>
+            {v.details.value || (v.blank ? "" : "—")}
+          </p>
         </div>
       )}
 
       <div className="mt-2 flex items-stretch gap-3">
         <div className="flex items-center rounded border-2 border-neutral-900 px-3 py-1.5">
           <span className="mr-2 text-neutral-500">Amount</span>
-          <span className="text-[15px] font-bold tabular-nums">BDT {formatAmount(v.amount)}</span>
+          <span className="text-[15px] font-bold tabular-nums">BDT {v.blank ? <span className="inline-block w-[30mm]" /> : formatAmount(v.amount)}</span>
         </div>
-        <div className="flex flex-1 items-center rounded bg-neutral-100 px-3 py-1.5">
+        <div className={cn("flex flex-1 items-center rounded px-3 py-1.5", v.blank ? "border border-neutral-500" : "bg-neutral-100")}>
           <span className="mr-2 shrink-0 text-neutral-500">In words</span>
           <span className="font-semibold italic">{v.amountWords}</span>
         </div>
@@ -98,7 +124,9 @@ function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy:
           </div>
         ))}
       </div>
-      <p className="mt-1 text-right text-[8px] text-neutral-400">{STATUS_NOTE[v.status]} · System generated voucher</p>
+      <p className="mt-1 text-right text-[8px] text-neutral-400">
+        {v.blank ? "Manual voucher · fill in by hand" : `${STATUS_NOTE[v.status]} · System generated voucher`}
+      </p>
     </div>
   );
 }
@@ -133,12 +161,18 @@ export function VoucherSheet({ v, b }: { v: VoucherData; b: VoucherBranding }) {
       <div className="no-print flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2">
         <Button onClick={print}><Printer /> Print (A4, 2 copies)</Button>
         <Button variant="outline" onClick={pdf} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Download />} Download PDF</Button>
-        <span className={cn("ml-auto rounded-full px-2.5 py-1 text-xs font-medium",
-          v.status === "confirmed" ? "bg-success-soft text-success" : v.status === "cancelled" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning")}>
-          {STATUS_NOTE[v.status]}
-        </span>
+        {!v.blank && (
+          <span className={cn("ml-auto rounded-full px-2.5 py-1 text-xs font-medium",
+            v.status === "confirmed" ? "bg-success-soft text-success" : v.status === "cancelled" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning")}>
+            {STATUS_NOTE[v.status]}
+          </span>
+        )}
       </div>
-      <p className="no-print text-xs text-muted-foreground">Printing does not mark anything as paid. Only an administrator can confirm a payment.</p>
+      <p className="no-print text-xs text-muted-foreground">
+        {v.blank
+          ? "Blank form to fill in by hand. It is not saved in the system — enter the payment in the software later if it should count in reports."
+          : "Printing does not mark anything as paid. Only an administrator can confirm a payment."}
+      </p>
 
       <div className="overflow-x-auto rounded-xl bg-muted/50 p-3 sm:p-6 print:overflow-visible print:bg-transparent print:p-0">
         <article className="print-root mx-auto h-[297mm] w-[210mm] bg-white shadow-sm ring-1 ring-black/5 print:shadow-none print:ring-0">

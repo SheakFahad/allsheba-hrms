@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { PenLine } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/page-header";
@@ -33,7 +36,12 @@ export default async function AdminExpensesPage({ searchParams }: PageProps<"/ad
       <PageHeader
         title="Expense Management"
         description="Daily and monthly expenses with printable vouchers. Only confirmed expenses count as paid cost."
-        actions={<ExportButton type="cost_report" params={{ from: param(sp, "from"), to: param(sp, "to") }} label="Cost & expense report" />}
+        actions={
+          <>
+            <Button variant="outline" asChild><Link href="/admin/vouchers/expense/blank"><PenLine /> Blank voucher</Link></Button>
+            <ExportButton type="cost_report" params={{ from: param(sp, "from"), to: param(sp, "to") }} label="Cost & expense report" />
+          </>
+        }
       />
       <LinkTabs
         tabs={[{ key: "daily", label: "Daily expenses" }, { key: "monthly", label: "Monthly expenses" }, { key: "categories", label: "Categories" }]}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Banknote } from "lucide-react";
+import Link from "next/link";
+import { Banknote, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -59,6 +60,7 @@ export default async function SalaryPaymentsPage({ searchParams }: PageProps<"/a
         actions={
           <>
             <ExportButton type="salary_payments" params={{ month }} label="Payment report" />
+            <Button variant="outline" asChild><Link href="/admin/vouchers/salary/blank"><PenLine /> Blank voucher</Link></Button>
             <SalaryPaymentDialog {...dialogProps} />
           </>
         }

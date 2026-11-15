@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PenLine } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { ExpensesView } from "@/components/finance/expenses-view";
 import { requirePageRole } from "@/lib/auth";
@@ -14,7 +17,11 @@ export default async function EntryExpensesPage({ searchParams }: PageProps<"/en
   const [sp, settings] = await Promise.all([searchParams, getSettings()]);
   return (
     <>
-      <PageHeader title="Daily Expenses" description="Record expenses and print vouchers. An administrator confirms payment." />
+      <PageHeader
+        title="Daily Expenses"
+        description="Record expenses and print vouchers. An administrator confirms payment."
+        actions={<Button variant="outline" asChild><Link href="/entry/vouchers/expense/blank"><PenLine /> Blank voucher</Link></Button>}
+      />
       <ExpensesView kind="daily" sp={sp} user={user} timezone={settings.timezone} voucherBase="/entry/vouchers/expense" />
     </>
   );
