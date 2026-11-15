@@ -5,8 +5,9 @@
 |---|---|
 | Branch `perf/optimizations` pushed | done |
 | Vercel preview deployment | created automatically by the push; URL in Vercel → Deployments |
-| Preview tested by owner | **pending** |
-| Production deployment | **waiting for owner approval** |
+| Preview tested by owner | done — owner confirmed all features work |
+| Production deployment | **done** 2026-11-15, commit `abc8834`, region `hnd1` verified |
+| Post-release smoke test | login form renders; `/admin` signed-out → 307 to `/login`; cron without secret → 401 |
 
 ## Environment
 - No environment variable changes are required.

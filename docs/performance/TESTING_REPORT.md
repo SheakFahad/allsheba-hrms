@@ -19,8 +19,8 @@
   because `profiles.is_active` is checked in the database.
 - No new caching of private data. Per-request React `cache()` only; nothing shared between users.
 
-## Not yet tested (needs the owner, signed in on the preview deployment)
-- [ ] Admin: login, dashboard (cards then charts), employee add/edit, attendance edit + correction, leave approve,
+## Manual testing on the preview deployment — confirmed by the owner (2026-11-15)
+- [x] Admin: login, dashboard (cards then charts), employee add/edit, attendance edit + correction, leave approve,
       payroll page, a PDF and an Excel export, settings save, users page, audit logs
-- [ ] Entry: login, employee search, attendance save (in, out, late reason), duplicate prevention, history
-- [ ] Payslip opens and matches production
+- [x] Entry: login, employee search, attendance save (in, out, late reason), duplicate prevention, history
+- [x] Payslip opens and matches production

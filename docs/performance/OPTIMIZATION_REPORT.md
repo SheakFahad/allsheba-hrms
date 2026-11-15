@@ -26,10 +26,12 @@ database functions are used. Payroll, attendance, leave and report logic were no
 | Other routes client JS | 79–96 KB | 79–96 KB | unchanged |
 | Supabase Auth round trips per signed-in request | 2 | 0 (token verified locally) | −2 |
 | Holiday queries per dashboard load | up to 7 | 1 | — |
-| Server response time (TTFB) | `/login` median 1031 ms | **pending** — measure on the deployed version | — |
+| `/login` TTFB, production (10 samples, from Bangladesh) | median 1069 ms (min 648) | **median 394 ms** (min 375) | **−63%** |
+| `/` TTFB (proxy + redirect) | median 389 ms | median 341 ms | −12% |
+| Server region (`x-vercel-id`) | `iad1` Washington DC | `hnd1` Tokyo | same region as database |
 
-The TTFB effect of the region change can only be measured after deployment (preview or production); it is not
-estimated here.
+Measured on 2026-11-15 before (commit `429d758`) and after (commit `abc8834`) the production release. Signed-in pages were
+not timed (no credentials in this session); they make more database round trips than `/login`, so they gain at least as much.
 
 ## Remaining bottlenecks / next steps
 - Visitors in Bangladesh reach Tokyo in ~150 ms; this distance remains for every navigation.
