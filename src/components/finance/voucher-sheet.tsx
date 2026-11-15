@@ -13,7 +13,9 @@ export interface VoucherData {
   date: string;
   status: "pending" | "confirmed" | "cancelled";
   /** Two-column information grid (label → value). `full` spans both columns; `choices` prints tick boxes. */
-  rows: { label: string; value: string; full?: boolean; choices?: string[] }[];
+  rows: { label: string; value: string; full?: boolean; choices?: string[]; spacer?: boolean }[];
+  /** Hand-fill table (blank vouchers): column headings, an empty writing area and an "Amount In Word" row. Replaces the amount boxes. */
+  table?: { columns: string[] } | null;
   details?: { label: string; value: string } | null;
   amount: number;
   amountWords: string;
@@ -61,13 +63,15 @@ function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy:
         </div>
       </header>
 
-      <div className="mt-2 flex justify-between text-[11px]">
-        <p><span className="text-neutral-500">Voucher No:</span> {v.blank ? blankLine : <b className="tabular-nums">{v.voucherNo}</b>}</p>
-        <p><span className="text-neutral-500">Date:</span> {v.blank ? blankLine : <b className="tabular-nums">{v.date}</b>}</p>
-      </div>
+      {!v.table && (
+        <div className="mt-2 flex justify-between text-[11px]">
+          <p><span className="text-neutral-500">Voucher No:</span> {v.blank ? blankLine : <b className="tabular-nums">{v.voucherNo}</b>}</p>
+          <p><span className="text-neutral-500">Date:</span> {v.blank ? blankLine : <b className="tabular-nums">{v.date}</b>}</p>
+        </div>
+      )}
 
       <dl className={cn("mt-1.5 grid grid-cols-2 gap-x-6", v.blank ? "gap-y-0" : "gap-y-1")}>
-        {v.rows.map((r) => (
+        {v.rows.map((r, i) => r.spacer ? <div key={`spacer-${i}`} /> : (
           <div
             key={r.label}
             className={cn(
@@ -77,7 +81,7 @@ function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy:
               v.blank && "min-h-[8mm]",
             )}
           >
-            <dt className="w-[28mm] shrink-0 text-neutral-500">{r.label}</dt>
+            <dt className="min-w-[28mm] shrink-0 text-neutral-500">{r.label}</dt>
             <dd className="min-w-0 flex-1 font-semibold break-words">
               {r.choices ? (
                 <span className="flex flex-wrap gap-x-4 gap-y-1 font-normal">
@@ -105,7 +109,21 @@ function VoucherCopy({ v, b, copy }: { v: VoucherData; b: VoucherBranding; copy:
         </div>
       )}
 
-      <div className="mt-2 flex items-stretch gap-3">
+      {v.table && (
+        <div className="mt-3 border border-neutral-800">
+          <div className="grid border-b border-neutral-800" style={{ gridTemplateColumns: `repeat(${v.table.columns.length}, 1fr)` }}>
+            {v.table.columns.map((c, i) => (
+              <p key={c} className={cn("px-2 py-1 font-bold", i > 0 && "border-l border-neutral-800")}>{c}</p>
+            ))}
+          </div>
+          <div className="grid h-[52mm]" style={{ gridTemplateColumns: `repeat(${v.table.columns.length}, 1fr)` }}>
+            {v.table.columns.map((c, i) => <div key={c} className={cn(i > 0 && "border-l border-neutral-800")} />)}
+          </div>
+          <p className="border-t border-neutral-800 px-2 py-1.5 font-bold">Amount In Word:</p>
+        </div>
+      )}
+
+      <div className={cn("mt-2 flex items-stretch gap-3", v.table && "hidden")}>
         <div className="flex items-center rounded border-2 border-neutral-900 px-3 py-1.5">
           <span className="mr-2 text-neutral-500">Amount</span>
           <span className="text-[15px] font-bold tabular-nums">BDT {v.blank ? <span className="inline-block w-[30mm]" /> : formatAmount(v.amount)}</span>

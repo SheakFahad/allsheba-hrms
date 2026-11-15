@@ -120,24 +120,21 @@ export async function BlankExpenseVoucherPage({ backHref, backLabel }: { backHre
         b={branding}
         v={{
           blank: true,
-          title: "Expense Voucher",
+          title: "Daily Expense",
           voucherNo: "",
           date: "",
           status: "pending",
           rows: [
-            { label: "Name", value: "" },
-            { label: "Category", value: "" },
-            { label: "Employee", value: "" },
-            { label: "Designation", value: "" },
-            { label: "Expense type", value: "", choices: ["Daily", "Monthly"] },
-            { label: "Period", value: "" },
-            { label: "Payment method", value: "", full: true, choices: Object.values(EXPENSE_METHOD_LABELS) },
-            { label: "Comments", value: "", full: true },
+            { label: "Name:", value: "" },
+            { label: "Date:", value: "" },
+            { label: "", value: "", spacer: true },
+            { label: "Employee Designation:", value: "" },
           ],
-          details: { label: "Full details", value: "" },
+          table: { columns: ["Date / Type", "Full Details", "Amount", "Comments"] },
+          details: null,
           amount: 0,
           amountWords: "",
-          signatures: SIGNATURES.map((label) => ({ label })),
+          signatures: ["Prepared By", "Checked By", "Approved By", "Received"].map((label) => ({ label })),
           fileName: "blank-expense-voucher",
         }}
       />

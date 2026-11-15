@@ -60,9 +60,11 @@ export async function downloadVoucherPdf(v: VoucherData, b: VoucherBranding) {
     pdf.setDrawColor(...BRAND).setLineWidth(0.6).line(M, y, W - M, y);
     y += 5.5;
 
-    // Voucher no / date
-    pdf.setFontSize(9).setTextColor(...MUTED).setFont("helvetica", "normal").text("Voucher No:", M, y);
-    if (v.blank) {
+    // Voucher no / date (a hand-fill table voucher carries its own Date row instead)
+    if (!v.table) pdf.setFontSize(9).setTextColor(...MUTED).setFont("helvetica", "normal").text("Voucher No:", M, y);
+    if (v.table) {
+      y += 3;
+    } else if (v.blank) {
       pdf.setDrawColor(...MUTED).setLineWidth(0.2).line(M + 20, y + 0.8, M + 58, y + 0.8);
       pdf.setFont("helvetica", "normal").setTextColor(...MUTED).text("Date:", W - M - 48, y);
       pdf.line(W - M - 38, y + 0.8, W - M, y + 0.8);
@@ -82,8 +84,10 @@ export async function downloadVoucherPdf(v: VoucherData, b: VoucherBranding) {
       if (r.full && col === 1) { y += rowH; col = 0; }
       const cx = M + col * (colW + 8);
       const w = r.full ? W - 2 * M : colW;
-      pdf.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...MUTED).text(r.label, cx, y);
-      if (r.choices) {
+      if (!r.spacer) pdf.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...MUTED).text(r.label, cx, y);
+      if (r.spacer) {
+        // empty cell keeps the next field in the right-hand column
+      } else if (r.choices) {
         let bx = cx + 30;
         pdf.setTextColor(...INK).setDrawColor(...INK).setLineWidth(0.25);
         for (const c of r.choices) {
@@ -112,7 +116,24 @@ export async function downloadVoucherPdf(v: VoucherData, b: VoucherBranding) {
       y += boxH + 4;
     }
 
+    // Hand-fill table: headings, empty writing area, "Amount In Word" row
+    if (v.table) {
+      const cols = v.table.columns;
+      const tw = W - 2 * M;
+      const cw = tw / cols.length;
+      const headH = 7, bodyH = 52, wordsH = 8;
+      const ty = y + 1.5;
+      pdf.setDrawColor(...INK).setLineWidth(0.3).rect(M, ty, tw, headH + bodyH + wordsH);
+      pdf.line(M, ty + headH, M + tw, ty + headH).line(M, ty + headH + bodyH, M + tw, ty + headH + bodyH);
+      cols.forEach((c, i) => {
+        if (i > 0) pdf.line(M + i * cw, ty, M + i * cw, ty + headH + bodyH);
+        pdf.setFont("helvetica", "bold").setFontSize(9).setTextColor(...INK).text(c, M + i * cw + 2, ty + 4.8);
+      });
+      pdf.text("Amount In Word:", M + 2, ty + headH + bodyH + 5.3);
+    }
+
     // Amount + words
+    if (!v.table) {
     pdf.setDrawColor(...INK).setLineWidth(0.5).roundedRect(M, y, 58, 9, 1, 1);
     pdf.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...MUTED).text("Amount", M + 2.5, y + 5.8);
     if (v.blank) {
@@ -125,6 +146,7 @@ export async function downloadVoucherPdf(v: VoucherData, b: VoucherBranding) {
     pdf.setFont("helvetica", "normal").setFontSize(8).setTextColor(...MUTED).text("In words", M + 63.5, y + 5.6);
     if (!v.blank) pdf.setFont("helvetica", "bolditalic").setFontSize(8.5).setTextColor(...INK)
       .text(pdf.splitTextToSize(v.amountWords, W - 2 * M - 80)[0], M + 78, y + 5.6);
+    }
 
     // Signatures (bottom of the half)
     const sy = y0 + HALF - 15;
