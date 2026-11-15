@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Building2, FileText, Lock, SlidersHorizontal, User } from "lucide-react";
+import { ArrowRight, Banknote, Building2, FileText, Lock, Receipt, SlidersHorizontal, User, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { requirePageRole } from "@/lib/auth";
@@ -9,6 +9,13 @@ import { REPORTS, type ReportDef } from "@/lib/reports/catalog";
 import { todayISO } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Print & PDF Center" };
+
+const FINANCE_REPORTS = new Set(["cost_report", "salary_payments"]);
+const FINANCE_CARDS = [
+  { href: "/admin/expenses", label: "Daily Expense Voucher", description: "Record a daily or monthly expense and print its voucher — two copies on one A4 sheet.", cta: "Open expenses", icon: Receipt },
+  { href: "/admin/salary-payments", label: "Salary Payment Voucher", description: "Record a salary payment (full or partial) and print the two-copy A4 voucher.", cta: "Open salary payments", icon: Banknote },
+  { href: "/admin/finance", label: "Total Cost & Expense Report", description: "Expenses, salary paid / partial / pending and daily, monthly, yearly cost — Print, PDF, Excel, CSV.", cta: "Open report", icon: Wallet },
+];
 
 const GROUPS = [
   { key: "company", label: "Company reports", icon: Building2 },
@@ -37,11 +44,33 @@ export default async function PrintCenterPage() {
         description="Every report template in one place. Each opens a print preview with Print, PDF, Excel and CSV."
       />
       <div className="grid gap-8">
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Receipt className="size-4 text-brand" /> Expenses & vouchers</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {FINANCE_CARDS.map((c) => (
+              <Card key={c.href} className="group relative gap-0 p-4 transition-colors hover:border-brand/40">
+                <div className="flex items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-deep dark:text-brand">
+                    <c.icon className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <Link href={c.href} className="font-medium after:absolute after:inset-0">{c.label}</Link>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{c.description}</p>
+                    <p className="mt-2 flex items-center gap-2 text-xs font-medium text-brand">
+                      {c.cta} <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                      <span className="ml-auto inline-flex items-center gap-1 text-warning"><Lock className="size-3" /> Confidential</span>
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
         {GROUPS.map((g) => (
           <section key={g.key}>
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><g.icon className="size-4 text-brand" /> {g.label}</h2>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {REPORTS.filter((r) => r.category === g.key).map((r) => (
+              {REPORTS.filter((r) => r.category === g.key && !FINANCE_REPORTS.has(r.id)).map((r) => (
                 <Card key={r.id} className="group relative gap-0 p-4 transition-colors hover:border-brand/40">
                   <div className="flex items-start gap-3">
                     <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-deep dark:text-brand">

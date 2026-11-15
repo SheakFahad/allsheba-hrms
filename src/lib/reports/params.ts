@@ -30,5 +30,8 @@ export function parseReportParams(sp: SearchParams): ReportParams {
     sort: /^[a-z_A-Z0-9]{1,40}$/.test(param(sp, "sort") ?? "") ? param(sp, "sort") : undefined,
     dir: param(sp, "dir") === "desc" ? "desc" : param(sp, "dir") === "asc" ? "asc" : undefined,
     orientation: param(sp, "orientation") === "portrait" ? "portrait" : param(sp, "orientation") === "landscape" ? "landscape" : undefined,
+    category: uuidOr(param(sp, "category")),
+    method: ["cash", "bank_transfer", "mobile_banking", "cheque", "other"].includes(param(sp, "method") ?? "") ? param(sp, "method") : undefined,
+    pstatus: ["pending", "confirmed", "partially_paid", "paid"].includes(param(sp, "pstatus") ?? "") ? param(sp, "pstatus") : undefined,
   };
 }

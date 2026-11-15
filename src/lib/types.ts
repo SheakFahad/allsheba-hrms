@@ -22,6 +22,8 @@ export interface Profile {
   must_change_password: boolean;
   /** Linked employee record (role "employee" only). */
   employee_id: string | null;
+  /** Entry operators only: admin-granted access to expense entry and vouchers. */
+  can_manage_expenses: boolean;
   last_login_at: string | null;
   created_at: string;
 }

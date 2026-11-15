@@ -124,3 +124,13 @@ describe("flexible schedule display", () => {
     expect(formatCell("18:05:00", "time")).toBe("6:05 PM");
   });
 });
+
+describe("amount in words (Bangladeshi system)", () => {
+  it("formats taka and paisa", async () => {
+    const { amountInWords } = await import("@/lib/finance");
+    expect(amountInWords(5450)).toBe("Taka Five Thousand Four Hundred Fifty Only");
+    expect(amountInWords(125000)).toBe("Taka One Lakh Twenty Five Thousand Only");
+    expect(amountInWords(23456789.5)).toBe("Taka Two Crore Thirty Four Lakh Fifty Six Thousand Seven Hundred Eighty Nine and Paisa Fifty Only");
+    expect(amountInWords(100)).toBe("Taka One Hundred Only");
+  });
+});

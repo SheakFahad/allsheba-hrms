@@ -23,14 +23,19 @@ interface ShellProps {
   user: { fullName: string; username: string };
   company: { name: string; logoUrl: string };
   badges?: Record<string, number>;
+  /** Nav links the current user may not use (hidden; access is still enforced server-side). */
+  hiddenHrefs?: string[];
   children: React.ReactNode;
 }
 
-function SidebarNav({ role, badges, onNavigate }: { role: AppRole; badges?: Record<string, number>; onNavigate?: () => void }) {
+function SidebarNav({ role, badges, hiddenHrefs, onNavigate }: { role: AppRole; badges?: Record<string, number>; hiddenHrefs?: string[]; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const groups = NAV[role]
+    .map((g) => ({ ...g, items: g.items.filter((i) => !hiddenHrefs?.includes(i.href)) }))
+    .filter((g) => g.items.length > 0);
   return (
     <nav className="grid gap-5 px-3 py-4" aria-label="Main navigation">
-      {NAV[role].map((group) => (
+      {groups.map((group) => (
         <div key={group.label}>
           <p className="mb-1.5 px-2.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{group.label}</p>
           <ul className="grid gap-0.5">
@@ -79,7 +84,7 @@ function Brand({ company, role }: { company: ShellProps["company"]; role: AppRol
   );
 }
 
-export function AppShell({ role, user, company, badges, children }: ShellProps) {
+export function AppShell({ role, user, company, badges, hiddenHrefs, children }: ShellProps) {
   const [open, setOpen] = React.useState(false);
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -88,7 +93,7 @@ export function AppShell({ role, user, company, badges, children }: ShellProps) 
       <aside className="no-print sticky top-0 hidden h-screen flex-col border-r bg-sidebar lg:flex">
         <Brand company={company} role={role} />
         <div className="flex-1 overflow-y-auto">
-          <SidebarNav role={role} badges={badges} />
+          <SidebarNav role={role} badges={badges} hiddenHrefs={hiddenHrefs} />
         </div>
       </aside>
 
@@ -97,7 +102,7 @@ export function AppShell({ role, user, company, badges, children }: ShellProps) 
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <Brand company={company} role={role} />
           <div className="overflow-y-auto">
-            <SidebarNav role={role} badges={badges} onNavigate={() => setOpen(false)} />
+            <SidebarNav role={role} badges={badges} hiddenHrefs={hiddenHrefs} onNavigate={() => setOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

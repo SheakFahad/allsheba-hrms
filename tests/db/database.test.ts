@@ -549,3 +549,107 @@ describe("GPS self-service attendance", () => {
     });
   });
 });
+
+describe("expenses, salary payments and vouchers", () => {
+  const month = async () => (await db.query<{ d: string }>("select date_trunc('month', public.local_today())::date::text as d")).rows[0].d;
+  const cat = async (name: string) => (await db.query<{ id: string }>("select id from expense_categories where name = $1", [name])).rows[0].id;
+
+  it("seeds expense categories", async () => {
+    const r = await db.query<{ n: number }>("select count(*)::int as n from expense_categories");
+    expect(r.rows[0].n).toBeGreaterThanOrEqual(10);
+  });
+
+  it("entry operators need an explicit grant", async () => {
+    const c = await cat("Office Supplies");
+    await asUser(db, entry, async () => {
+      await expect(
+        db.query("insert into expenses (expense_kind, category_id, expense_date, payee_name, amount) values ('daily', $1, current_date, 'Shop', 100)", [c]),
+      ).rejects.toThrow(/row-level security/);
+    });
+    await db.query("update profiles set can_manage_expenses = true where id = $1", [entry]);
+  });
+
+  it("granted operators record pending expenses with a unique voucher number but cannot confirm", async () => {
+    const c = await cat("Office Supplies");
+    let id = "";
+    await asUser(db, entry, async () => {
+      const r = await db.query<{ id: string; voucher_no: string; status: string }>(
+        "insert into expenses (expense_kind, category_id, expense_date, payee_name, amount, status) values ('daily', $1, current_date, 'Stationery shop', 450, 'confirmed') returning id, voucher_no, status",
+        [c],
+      );
+      id = r.rows[0].id;
+      expect(r.rows[0].status).toBe("pending"); // forced
+      expect(r.rows[0].voucher_no).toMatch(/^EXP-\d{4}-\d{5}$/);
+      await expect(db.query("select public.set_expense_status($1, 'confirmed')", [id])).rejects.toThrow(/Only administrators/);
+      expect((await db.query("select * from salary_payments")).rows.length).toBe(0);
+    });
+    await asUser(db, admin, async () => {
+      await db.query("select public.set_expense_status($1, 'confirmed')", [id]);
+      await expect(db.query("update expenses set amount = 1 where id = $1", [id])).rejects.toThrow(/confirmed expense cannot be changed/);
+      const a = await db.query("select * from audit_logs where entity = 'expenses' and entity_id = $1", [id]);
+      expect(a.rows.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("prevents duplicate monthly expenses for the same category and period", async () => {
+    const c = await cat("Office Rent");
+    const m = await month();
+    await asUser(db, admin, async () => {
+      const ins = () => db.query(
+        "insert into expenses (expense_kind, category_id, expense_date, period_start, period_end, payee_name, amount) values ('monthly', $1, current_date, $2::date, ($2::date + interval '1 month - 1 day')::date, 'Landlord', 25000) returning id",
+        [c, m],
+      );
+      const first = (await ins()).rows[0] as { id: string };
+      await expect(ins()).rejects.toThrow(/expenses_monthly_unique|duplicate/);
+      await db.query("select public.set_expense_status($1, 'cancelled', 'Entered twice')", [first.id]);
+      await ins(); // allowed after cancelling
+    });
+  });
+
+  it("tracks partial salary payments and blocks paying more than the salary", async () => {
+    const m = await month();
+    await asUser(db, entry, async () => {
+      await expect(
+        db.query("insert into salary_payments (employee_id, employee_code, employee_name, salary_month, amount, payment_date) values ($1, 'x', 'x', $2, 100, current_date)", [empA, m]),
+      ).rejects.toThrow();
+    });
+    await asUser(db, admin, async () => {
+      const p1 = (await db.query<{ id: string; voucher_no: string; employee_name: string; configured_salary: string }>(
+        "insert into salary_payments (employee_id, employee_code, employee_name, salary_month, amount, payment_date, payment_method) values ($1, '', '', $2, 10000, current_date, 'cash') returning id, voucher_no, employee_name, configured_salary",
+        [empA, m],
+      )).rows[0];
+      expect(p1.voucher_no).toMatch(/^SAL-\d{4}-\d{5}$/);
+      expect(p1.employee_name).toBe("Rahim Uddin");
+      expect(Number(p1.configured_salary)).toBe(30000);
+
+      let st = (await db.query<{ status: string; paid: string; pending: string }>("select status, paid, pending from public.salary_payment_status($1) where employee_id = $2", [m, empA])).rows[0];
+      expect(st).toMatchObject({ status: "pending" }); // recorded but not confirmed: nothing paid yet
+      await db.query("select public.set_salary_payment_status($1, 'confirmed')", [p1.id]);
+      st = (await db.query<{ status: string; paid: string; pending: string }>("select status, paid, pending from public.salary_payment_status($1) where employee_id = $2", [m, empA])).rows[0];
+      expect(st.status).toBe("partially_paid");
+      expect(Number(st.paid)).toBe(10000);
+
+      const p2 = (await db.query<{ id: string }>(
+        "insert into salary_payments (employee_id, employee_code, employee_name, salary_month, amount, payment_date) values ($1, '', '', $2, 20000, current_date) returning id",
+        [empA, m],
+      )).rows[0];
+      await expect(
+        db.query("insert into salary_payments (employee_id, employee_code, employee_name, salary_month, amount, payment_date) values ($1, '', '', $2, 1, current_date)", [empA, m]),
+      ).rejects.toThrow(/full salary for this month is already recorded/);
+      await db.query("select public.set_salary_payment_status($1, 'confirmed')", [p2.id]);
+      st = (await db.query<{ status: string; paid: string; pending: string }>("select status, paid from public.salary_payment_status($1) where employee_id = $2", [m, empA])).rows[0];
+      expect(st.status).toBe("paid");
+      await expect(db.query("update salary_payments set amount = 5 where id = $1", [p2.id])).rejects.toThrow(/cannot be changed/);
+    });
+  });
+
+  it("employees have no access to expenses or salary payments", async () => {
+    const u = (await db.query<{ id: string }>("select id from profiles where role = 'employee' limit 1")).rows[0]?.id;
+    if (!u) return;
+    await asUser(db, u, async () => {
+      expect((await db.query("select * from expenses")).rows.length).toBe(0);
+      expect((await db.query("select * from salary_payments")).rows.length).toBe(0);
+      expect((await db.query("select * from public.salary_payment_status(current_date)")).rows.length).toBe(0);
+    });
+  });
+});

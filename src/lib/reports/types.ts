@@ -84,4 +84,8 @@ export interface ReportParams {
   sort?: string;
   dir?: "asc" | "desc";
   orientation?: "portrait" | "landscape";
+  /** Finance filters */
+  category?: string;
+  method?: string;
+  pstatus?: string;
 }

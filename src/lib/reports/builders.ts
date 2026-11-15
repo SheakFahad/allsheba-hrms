@@ -16,6 +16,7 @@ import type {
 } from "@/lib/types";
 import type { SessionUser } from "@/lib/auth";
 import { REPORT_MAP } from "./catalog";
+import { financeBuilders } from "./finance-builders";
 import type { KVSection, ReportColumn, ReportDocument, ReportParams, ReportSection, Row, TableSection } from "./types";
 
 export class ReportError extends Error {}
@@ -790,7 +791,7 @@ function applyColumnsAndSort(doc: Built, p: ReportParams) {
 
 export async function buildReport(p: ReportParams, user: SessionUser): Promise<ReportDocument> {
   const def = REPORT_MAP.get(p.type);
-  const build = builders[p.type];
+  const build = builders[p.type] ?? financeBuilders[p.type];
   if (!def || !build) throw new ReportError("Unknown report type.");
   if (!def.roles.includes(user.role)) throw new ReportError("You do not have permission to view this report.");
   for (const need of def.required ?? []) {

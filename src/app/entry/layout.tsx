@@ -9,6 +9,7 @@ export default async function EntryLayout({ children }: LayoutProps<"/entry">) {
       role="entry"
       user={{ fullName: user.fullName, username: user.username }}
       company={{ name: branding.name, logoUrl: branding.logoUrl }}
+      hiddenHrefs={user.canManageExpenses ? [] : ["/entry/expenses"]}
     >
       {children}
     </AppShell>

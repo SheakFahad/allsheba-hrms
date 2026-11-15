@@ -7,6 +7,7 @@ import { RecordDialog, type FieldDef } from "@/components/shared/record-dialog";
 import { requirePageRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveEmployees } from "@/lib/data";
+import { ExpensePermissionSwitch } from "@/components/finance/expense-permission-switch";
 import { formatDateTime } from "@/lib/time";
 import type { Profile } from "@/lib/types";
 import { createUser, resetUserPassword, updateUser } from "../system-actions";
@@ -43,6 +44,8 @@ const PERMISSIONS: [string, string, string][] = [
   ["Payroll & payslips", "✓", "—"],
   ["Reports & exports", "All", "Daily / attendance only"],
   ["Users, settings, audit logs", "✓", "—"],
+  ["Expenses & expense vouchers", "Full control, confirm payments", "Only if granted (record + print; cannot confirm)"],
+  ["Salary payments & cost reports", "✓", "—"],
   ["Location restriction (GPS)", "None — works from anywhere", "None (shared office computer, entries marked “not GPS-verified”)"],
 ];
 
@@ -84,6 +87,7 @@ export default async function UsersPage() {
                   <TableCell>
                     {u.role === "admin" ? <ToneBadge tone="brand">Administrator</ToneBadge> : u.role === "entry" ? <ToneBadge tone="info">Entry operator</ToneBadge> : <ToneBadge tone="success">Employee</ToneBadge>}
                     {u.role === "employee" && <span className="mt-0.5 block text-xs text-muted-foreground">{u.employee_id ? empName.get(u.employee_id) ?? "Archived employee" : "Not linked"}</span>}
+                    {u.role === "entry" && <ExpensePermissionSwitch id={u.id} allowed={!!u.can_manage_expenses} />}
                   </TableCell>
                   <TableCell className="space-x-1">
                     {u.is_active ? <ToneBadge tone="success">Active</ToneBadge> : <ToneBadge tone="neutral">Inactive</ToneBadge>}

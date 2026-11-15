@@ -1,6 +1,6 @@
 import type { AppRole } from "@/lib/types";
 
-export type ReportNeed = "employee" | "employees" | "department" | "period" | "month" | "year" | "date" | "payroll" | "status" | "late";
+export type ReportNeed = "employee" | "employees" | "department" | "period" | "month" | "year" | "date" | "payroll" | "status" | "late" | "category" | "method" | "pstatus";
 
 export interface ReportDef {
   id: string;
@@ -36,6 +36,8 @@ export const REPORTS: ReportDef[] = [
   { id: "leave_summary", label: "Leave Summary", category: "company", description: "Leave taken and remaining per employee and type.", needs: ["year", "department"], roles: ["admin"], sensitive: false },
   { id: "payroll_summary", label: "Payroll Summary", category: "company", description: "Monthly payroll sheet with totals.", needs: ["month"], required: ["month"], roles: ["admin"], sensitive: true },
   { id: "salary_expense", label: "Salary Expense", category: "company", description: "Monthly payroll expense for a year.", needs: ["year"], roles: ["admin"], sensitive: true },
+  { id: "cost_report", label: "Total Cost & Expense Report", category: "company", description: "Confirmed expenses, salary paid / partial / pending, category and daily / monthly / yearly cost summaries.", needs: ["period", "month", "year", "employee", "category", "method", "pstatus"], roles: ["admin"], sensitive: true },
+  { id: "salary_payments", label: "Salary Payment Report", category: "company", description: "Salary payments and employee-wise paid / pending status.", needs: ["month", "employee", "method", "pstatus"], required: ["month"], roles: ["admin"], sensitive: true },
   { id: "employee_statistics", label: "Employee Statistics", category: "company", description: "Headcount by department, type, status and tenure.", needs: [], roles: ["admin"], sensitive: false },
   // Custom
   { id: "attendance_history", label: "Custom Attendance Report", category: "custom", description: "Choose employees, department, period, status and columns.", needs: ["employees", "department", "period", "month", "year", "status", "late"], roles: ["admin", "entry"], sensitive: false },

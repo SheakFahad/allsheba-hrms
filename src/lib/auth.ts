@@ -11,6 +11,8 @@ export interface SessionUser {
   fullName: string;
   role: AppRole;
   mustChangePassword: boolean;
+  /** Admin, or an entry operator granted expense entry by the admin. */
+  canManageExpenses: boolean;
 }
 
 /** Current signed-in user with their profile (cached per request). */
@@ -25,9 +27,9 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const user = { id: userId };
   const { data } = await supabase
     .from("profiles")
-    .select("id, username, full_name, role, is_active, must_change_password")
+    .select("id, username, full_name, role, is_active, must_change_password, can_manage_expenses")
     .eq("id", user.id)
-    .maybeSingle<Pick<Profile, "id" | "username" | "full_name" | "role" | "is_active" | "must_change_password">>();
+    .maybeSingle<Pick<Profile, "id" | "username" | "full_name" | "role" | "is_active" | "must_change_password" | "can_manage_expenses">>();
   if (!data || !data.is_active) return null;
   return {
     id: data.id,
@@ -35,6 +37,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     fullName: data.full_name || data.username,
     role: data.role,
     mustChangePassword: data.must_change_password,
+    canManageExpenses: data.role === "admin" || (data.role === "entry" && !!data.can_manage_expenses),
   };
 });
 
