@@ -161,11 +161,19 @@ export function GpsSpeedTest() {
           <Button variant="outline" size="sm" className="w-fit" disabled={!reading} onClick={() => reading && setOffice({ lat: reading.lat.toFixed(6), lng: reading.lng.toFixed(6) })}>
             Use this as office
           </Button>
-          {dist !== null && (
-            <p className={cn("text-sm font-medium", dist <= 100 ? "text-success" : "text-danger")}>
-              {Math.round(dist)} m from the office —{" "}
-              {dist <= 100 ? "inside 100 m: Check In would be accepted." : "You are outside the authorized office location."}
-            </p>
+          {dist !== null && reading && (
+            // Same order as the server: accuracy first, then distance.
+            reading.bestAccuracy > TARGET_ACCURACY ? (
+              <p className="text-sm font-medium text-danger">
+                {Math.round(dist)} m from the office, but accuracy is ±{Math.round(reading.bestAccuracy)} m (limit ±{TARGET_ACCURACY} m) —
+                Check In would be rejected: “Location accuracy is insufficient. Please try again.”
+              </p>
+            ) : (
+              <p className={cn("text-sm font-medium", dist <= 100 ? "text-success" : "text-danger")}>
+                {Math.round(dist)} m from the office —{" "}
+                {dist <= 100 ? "inside 100 m: Check In would be accepted." : "You are outside the authorized office location."}
+              </p>
+            )
           )}
         </CardContent>
       </Card>
