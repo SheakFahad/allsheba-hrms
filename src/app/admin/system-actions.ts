@@ -10,6 +10,14 @@ import { createAdminClient, usernameToEmail } from "@/lib/supabase/admin";
 import { hhmm, isoDate, optionalText, passwordSchema, usernameSchema, uuid } from "@/lib/validation";
 
 const idOpt = z.union([uuid, z.literal("")]).optional();
+
+/** Service-role client for sign-in account administration, with a clear message when the server key is missing. */
+function serviceClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new ActionError("Login accounts cannot be created or changed yet: the server key SUPABASE_SERVICE_ROLE_KEY is not set for this site (Vercel → Environment Variables). Nothing was changed.");
+  }
+  return createAdminClient();
+}
 const bool = z.union([z.boolean(), z.literal("true"), z.literal("false"), z.literal("on")]).transform((v) => v === true || v === "true" || v === "on");
 
 /* ---------------- Departments & designations ---------------- */
@@ -203,7 +211,7 @@ export async function createUser(input: unknown) {
     input,
     async (v) => {
       await assertRole("admin");
-      const admin = createAdminClient();
+      const admin = serviceClient();
       const { data: existing } = await admin.from("profiles").select("id").eq("username", v.username).maybeSingle();
       if (existing) throw new ActionError("That username is already taken.");
       const { data, error } = await admin.auth.admin.createUser({ email: usernameToEmail(v.username), password: v.password, email_confirm: true });
@@ -239,7 +247,7 @@ export async function updateUser(input: unknown) {
         if (!count) throw new ActionError("At least one active administrator is required.");
       }
       check(await supabase.from("profiles").update({ ...v, employee_id: v.role === "employee" ? v.employee_id : null }).eq("id", id));
-      if (!v.is_active) await createAdminClient().auth.admin.signOut(id).catch(() => undefined);
+      if (!v.is_active && process.env.SUPABASE_SERVICE_ROLE_KEY) await createAdminClient().auth.admin.signOut(id).catch(() => undefined);
       revalidatePath("/admin/users");
       return { ok: true as const, message: "User updated" };
     },
@@ -249,7 +257,7 @@ export async function updateUser(input: unknown) {
 export async function resetUserPassword(input: unknown) {
   return runAction(z.object({ id: uuid, password: passwordSchema }), input, async ({ id, password }) => {
     await assertRole("admin");
-    const admin = createAdminClient();
+    const admin = serviceClient();
     const { error } = await admin.auth.admin.updateUserById(id, { password });
     if (error) throw new ActionError(error.message);
     check(await admin.from("profiles").update({ must_change_password: true }).eq("id", id));
@@ -294,7 +302,7 @@ export async function createEmployeeAccounts(input: unknown) {
   return runAction(z.object({ employee_ids: z.array(uuid).min(1, "Select at least one employee").max(500) }), input, async ({ employee_ids }) => {
     await assertRole("admin");
     const supabase = await createClient();
-    const admin = createAdminClient();
+    const admin = serviceClient();
     const [{ data: emps }, { data: linked }, { data: taken }] = await Promise.all([
       supabase.from("employees").select("id, full_name, employee_code").in("id", employee_ids).is("archived_at", null),
       admin.from("profiles").select("employee_id").in("employee_id", employee_ids),
