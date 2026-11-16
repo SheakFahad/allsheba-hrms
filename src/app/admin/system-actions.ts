@@ -8,7 +8,7 @@ import { ActionError, check, runAction } from "@/lib/action";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, usernameToEmail } from "@/lib/supabase/admin";
 import { easyPassword } from "@/lib/easy-password";
-import { hhmm, isoDate, optionalText, passwordSchema, usernameSchema, uuid } from "@/lib/validation";
+import { DEFAULT_TEMPORARY_PASSWORD, hhmm, isoDate, optionalText, passwordSchema, temporaryPasswordSchema, usernameSchema, uuid } from "@/lib/validation";
 
 const idOpt = z.union([uuid, z.literal("")]).optional();
 
@@ -256,7 +256,7 @@ export async function updateUser(input: unknown) {
 }
 
 export async function resetUserPassword(input: unknown) {
-  return runAction(z.object({ id: uuid, password: passwordSchema }), input, async ({ id, password }) => {
+  return runAction(z.object({ id: uuid, password: temporaryPasswordSchema }), input, async ({ id, password }) => {
     await assertRole("admin");
     const admin = serviceClient();
     const { error } = await admin.auth.admin.updateUserById(id, { password });
@@ -303,10 +303,10 @@ export async function createEmployeeAccounts(input: unknown) {
   const schema = z
     .object({
       employee_ids: z.array(uuid).min(1, "Select at least one employee").max(500),
-      /** "easy" = Employee ID + last 4 phone digits; "random" = generated. */
-      mode: z.enum(["easy", "random"]).default("easy"),
+      /** "default" = 123456 for everyone; "easy" = Employee ID + last 4 phone digits; "random" = generated. */
+      mode: z.enum(["default", "easy", "random"]).default("default"),
       /** Admin-typed temporary password (single employee only). */
-      password: z.union([passwordSchema, z.literal("")]).optional(),
+      password: z.union([temporaryPasswordSchema, z.literal("")]).optional(),
     })
     .refine((x) => !x.password || x.employee_ids.length === 1, { message: "A typed password is only for one employee.", path: ["password"] });
   return runAction(schema, input, async ({ employee_ids, mode, password: typed }) => {
@@ -330,7 +330,9 @@ export async function createEmployeeAccounts(input: unknown) {
       for (let n = 2; usernames.has(username); n++) username = `${base}-${n}`;
       const password = typed
         ? typed
-        : mode === "easy"
+        : mode === "default"
+          ? DEFAULT_TEMPORARY_PASSWORD
+          : mode === "easy"
           ? easyPassword(e.employee_code, e.phone, String(1000 + randomInt(9000)))
           : temporaryPassword();
       const { data, error } = await admin.auth.admin.createUser({ email: usernameToEmail(username), password, email_confirm: true });

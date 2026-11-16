@@ -33,7 +33,7 @@ const EDIT_FIELDS: FieldDef[] = [
   { name: "is_active", label: "Account active", type: "switch", hint: "inactive users cannot sign in" },
 ];
 const RESET_FIELDS: FieldDef[] = [
-  { name: "password", label: "New temporary password", type: "password", required: true, hint: "The user must change it at next sign-in." },
+  { name: "password", label: "New temporary password", type: "text", required: true, hint: "e.g. 123456 (at least 6 characters). The user must choose their own password at next sign-in." },
 ];
 
 const PERMISSIONS: [string, string, string, string][] = [

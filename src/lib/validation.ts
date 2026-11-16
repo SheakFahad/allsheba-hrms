@@ -19,6 +19,18 @@ export const passwordSchema = z
   .regex(/[A-Za-z]/, "Include at least one letter")
   .regex(/[0-9]/, "Include at least one number");
 
+/**
+ * Temporary password set by an administrator (first sign-in / reset). Kept
+ * simple on purpose (e.g. 123456); the user must replace it with a strong
+ * password (passwordSchema) at the next sign-in.
+ */
+export const temporaryPasswordSchema = z
+  .string()
+  .min(6, "Use at least 6 characters")
+  .max(72, "Use at most 72 characters");
+
+export const DEFAULT_TEMPORARY_PASSWORD = "123456";
+
 export const usernameSchema = z
   .string()
   .trim()
