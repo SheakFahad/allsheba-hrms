@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { GpsSpeedTest } from "./gps-speed-test";
 
 export const metadata: Metadata = { title: "GPS speed test" };
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "GPS speed test" };
  * Uses no database and stores nothing.
  */
 export default function GpsTestPage() {
+  if (process.env.VERCEL_ENV === "production") notFound(); // staging / local only
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8">
       <h1 className="text-xl font-semibold tracking-tight">GPS speed test</h1>
