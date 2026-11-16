@@ -134,3 +134,16 @@ describe("amount in words (Bangladeshi system)", () => {
     expect(amountInWords(100)).toBe("Taka One Hundred Only");
   });
 });
+
+describe("easyPassword", () => {
+  it("is Employee ID + last 4 phone digits and meets the password rules", async () => {
+    const { easyPassword } = await import("@/lib/easy-password");
+    const { passwordSchema } = await import("@/lib/validation");
+    expect(easyPassword("ASL-0005", "01794506663")).toBe("asl00056663");
+    expect(easyPassword("ASL-0005", null, "4821")).toBe("asl00054821");
+    expect(easyPassword("0007", "", "1111")).toBe("emp00071111");
+    for (const pw of [easyPassword("ASL-0005", "01794506663"), easyPassword("A1", null, "1234")]) {
+      expect(passwordSchema.safeParse(pw).success).toBe(true);
+    }
+  });
+});

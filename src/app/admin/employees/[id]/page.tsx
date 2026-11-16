@@ -107,7 +107,7 @@ export default async function EmployeeProfilePage({ params, searchParams }: Page
             {login ? (
               <Button variant="outline" asChild><Link href="/admin/users">Login: @{login.username}{login.is_active ? "" : " (inactive)"}</Link></Button>
             ) : (
-              !emp.archived_at && <CreateEmployeeLoginButton employeeId={id} loginUrl={url} />
+              !emp.archived_at && <CreateEmployeeLoginButton employeeId={id} code={emp.employee_code} phone={emp.phone} loginUrl={url} />
             )}
             <ExportButton type="employee_profile" params={{ employee: id }} label="Profile report" />
             <ArchiveControls id={id} archived={!!emp.archived_at} name={emp.full_name} />

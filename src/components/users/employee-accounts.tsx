@@ -6,6 +6,9 @@ import { Download, KeyRound, Loader2, Printer, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { easyPassword } from "@/lib/easy-password";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createEmployeeAccounts, type CreatedAccount } from "@/app/admin/system-actions";
 
@@ -90,14 +93,14 @@ function useCreateAccounts() {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [created, setCreated] = React.useState<CreatedAccount[] | null>(null);
-  function run(ids: string[]) {
+  function run(ids: string[], opts: { mode?: "easy" | "random"; password?: string } = {}, onOk?: () => void) {
     startTransition(async () => {
-      const r = await createEmployeeAccounts({ employee_ids: ids });
+      const r = await createEmployeeAccounts({ employee_ids: ids, ...opts });
       if (!r.ok) return void toast.error(r.error);
       const { created: made, failed } = r.data!;
       for (const f of failed) toast.error(`${f.name}: ${f.error}`);
       if (!made.length && !failed.length) toast.info("Every selected employee already has a login.");
-      if (made.length) setCreated(made);
+      if (made.length) { setCreated(made); onOk?.(); }
       router.refresh();
     });
   }
@@ -108,6 +111,7 @@ function useCreateAccounts() {
 export function EmployeeAccountsPanel({ candidates, loginUrl }: { candidates: AccountCandidate[]; loginUrl: string }) {
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set(candidates.map((c) => c.id)));
   const { pending, created, setCreated, run } = useCreateAccounts();
+  const [easy, setEasy] = React.useState(true);
   const all = selected.size === candidates.length && candidates.length > 0;
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -131,8 +135,14 @@ export function EmployeeAccountsPanel({ candidates, loginUrl }: { candidates: Ac
             ))}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Username = Employee ID (e.g. asl-0001). A secure temporary password is generated; the employee must change it at first sign-in. Employee records are not changed.</p>
-            <Button onClick={() => run([...selected])} disabled={pending || selected.size === 0}>
+            <div className="grid gap-1.5">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={easy} onCheckedChange={(c) => setEasy(c === true)} />
+                Easy passwords: Employee ID + last 4 digits of phone (e.g. asl00056663)
+              </label>
+              <p className="text-xs text-muted-foreground">Username = Employee ID (e.g. asl-0005). Every employee must choose their own new password at first sign-in. Employee records are not changed.</p>
+            </div>
+            <Button onClick={() => run([...selected], { mode: easy ? "easy" : "random" })} disabled={pending || selected.size === 0}>
               {pending ? <Loader2 className="animate-spin" /> : <UserPlus />} Create {selected.size} login{selected.size === 1 ? "" : "s"}
             </Button>
           </div>
@@ -143,14 +153,44 @@ export function EmployeeAccountsPanel({ candidates, loginUrl }: { candidates: Ac
   );
 }
 
-/** Employee profile page: one-click login for an employee that has none. */
-export function CreateEmployeeLoginButton({ employeeId, loginUrl }: { employeeId: string; loginUrl: string }) {
+/** Employee profile page: create this employee's login with an easy password the admin can change. */
+export function CreateEmployeeLoginButton({ employeeId, code, phone, loginUrl }: { employeeId: string; code: string; phone: string | null; loginUrl: string }) {
   const { pending, created, setCreated, run } = useCreateAccounts();
+  const [open, setOpen] = React.useState(false);
+  const [password, setPassword] = React.useState(() => easyPassword(code, phone, "1234"));
+  const valid = password.length >= 8 && /[A-Za-z]/.test(password) && /[0-9]/.test(password);
   return (
     <>
-      <Button variant="outline" onClick={() => run([employeeId])} disabled={pending}>
-        {pending ? <Loader2 className="animate-spin" /> : <KeyRound />} Create login account
+      <Button variant="outline" onClick={() => { setPassword(easyPassword(code, phone)); setOpen(true); }} disabled={pending}>
+        <KeyRound /> Create login account
       </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create login account</DialogTitle>
+            <DialogDescription>Give these to the employee. They must choose their own new password at first sign-in.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label>Username</Label>
+              <p className="rounded-md border bg-muted/50 px-3 py-2 font-mono text-sm">{code.toLowerCase()}</p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="emp_pw">Temporary password</Label>
+              <Input id="emp_pw" className="font-mono" value={password} onChange={(e) => setPassword(e.target.value.trim())} autoComplete="off" />
+              <p className={valid ? "text-xs text-muted-foreground" : "text-xs text-danger"}>
+                {valid ? "Suggested: Employee ID + last 4 digits of phone. You can type any password." : "At least 8 characters with a letter and a number."}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={() => run([employeeId], { password }, () => setOpen(false))} disabled={pending || !valid}>
+              {pending ? <Loader2 className="animate-spin" /> : <UserPlus />} Create login
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {created && <CredentialsDialog accounts={created} loginUrl={loginUrl} onClose={() => setCreated(null)} />}
     </>
   );

@@ -7,6 +7,7 @@ import { assertRole } from "@/lib/auth";
 import { ActionError, check, runAction } from "@/lib/action";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, usernameToEmail } from "@/lib/supabase/admin";
+import { easyPassword } from "@/lib/easy-password";
 import { hhmm, isoDate, optionalText, passwordSchema, usernameSchema, uuid } from "@/lib/validation";
 
 const idOpt = z.union([uuid, z.literal("")]).optional();
@@ -299,12 +300,21 @@ function temporaryPassword(): string {
  * changed at first sign-in.
  */
 export async function createEmployeeAccounts(input: unknown) {
-  return runAction(z.object({ employee_ids: z.array(uuid).min(1, "Select at least one employee").max(500) }), input, async ({ employee_ids }) => {
+  const schema = z
+    .object({
+      employee_ids: z.array(uuid).min(1, "Select at least one employee").max(500),
+      /** "easy" = Employee ID + last 4 phone digits; "random" = generated. */
+      mode: z.enum(["easy", "random"]).default("easy"),
+      /** Admin-typed temporary password (single employee only). */
+      password: z.union([passwordSchema, z.literal("")]).optional(),
+    })
+    .refine((x) => !x.password || x.employee_ids.length === 1, { message: "A typed password is only for one employee.", path: ["password"] });
+  return runAction(schema, input, async ({ employee_ids, mode, password: typed }) => {
     await assertRole("admin");
     const supabase = await createClient();
     const admin = serviceClient();
     const [{ data: emps }, { data: linked }, { data: taken }] = await Promise.all([
-      supabase.from("employees").select("id, full_name, employee_code").in("id", employee_ids).is("archived_at", null),
+      supabase.from("employees").select("id, full_name, employee_code, phone").in("id", employee_ids).is("archived_at", null),
       admin.from("profiles").select("employee_id").in("employee_id", employee_ids),
       admin.from("profiles").select("username"),
     ]);
@@ -313,12 +323,16 @@ export async function createEmployeeAccounts(input: unknown) {
     const created: CreatedAccount[] = [];
     const failed: { name: string; error: string }[] = [];
 
-    for (const e of (emps ?? []) as { id: string; full_name: string; employee_code: string }[]) {
+    for (const e of (emps ?? []) as { id: string; full_name: string; employee_code: string; phone: string | null }[]) {
       if (alreadyLinked.has(e.id)) continue;
       const base = e.employee_code.toLowerCase().replace(/[^a-z0-9._-]/g, "-").slice(0, 28) || "emp";
       let username = base.length >= 3 ? base : `emp-${base}`;
       for (let n = 2; usernames.has(username); n++) username = `${base}-${n}`;
-      const password = temporaryPassword();
+      const password = typed
+        ? typed
+        : mode === "easy"
+          ? easyPassword(e.employee_code, e.phone, String(1000 + randomInt(9000)))
+          : temporaryPassword();
       const { data, error } = await admin.auth.admin.createUser({ email: usernameToEmail(username), password, email_confirm: true });
       if (error || !data.user) {
         failed.push({ name: e.full_name, error: error?.message ?? "Could not create the login." });
