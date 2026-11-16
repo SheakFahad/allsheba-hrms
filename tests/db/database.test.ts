@@ -789,3 +789,31 @@ describe("late grace for employee self check-in", () => {
     });
   });
 });
+
+describe("self check-out after an office-recorded check-in", () => {
+  it("lets the employee check out (GPS) on a check-in entered by the operator", async () => {
+    const OFFICE = { lat: 23.780887, lng: 90.407249 };
+    let emp = "";
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set office_latitude = $1, office_longitude = $2, office_radius_m = 100, gps_max_accuracy_m = 50, gps_required = true where id = 1", [OFFICE.lat, OFFICE.lng]);
+      emp = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date, shift_id) values ('Office Checkin', current_date - 90, (select id from shifts where is_default)) returning id",
+      )).rows[0].id;
+    });
+    const u = (await db.query<{ id: string }>("insert into auth.users (email) values ('officein@hrms.local') returning id")).rows[0].id;
+    await db.query("insert into profiles (id, username, full_name, role, employee_id, must_change_password) values ($1, 'officein', 'Office Checkin', 'employee', $2, false)", [u, emp]);
+    await asUser(db, entry, async () => {
+      await db.query(
+        "insert into attendance (employee_id, attendance_date, actual_in, status, late_reason) values ($1, public.local_today(), '00:00', 'present', 'traffic_jam')",
+        [emp],
+      );
+    });
+    await asUser(db, u, async () => {
+      const r = (await db.query<{ r: Record<string, unknown> }>("select public.self_attendance('check_out', $1, $2, 10, null, null) as r", [OFFICE.lat, OFFICE.lng])).rows[0].r;
+      expect(r).toMatchObject({ ok: true, result: "accepted", gps_verified: true });
+    });
+    const a = (await db.query<{ actual_out: string | null; entry_method: string }>("select actual_out, entry_method from attendance where employee_id = $1", [emp])).rows[0];
+    expect(a.actual_out).not.toBeNull();
+    expect(a.entry_method).toBe("operator");
+  });
+});

@@ -105,7 +105,7 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
 
   const rec = ctx.record;
   const canCheckIn = !rec;
-  const canCheckOut = !!rec?.actual_in && !rec.actual_out && rec.entry_method !== "operator";
+  const canCheckOut = !!rec?.actual_in && !rec.actual_out;
   const busy = status.kind === "busy";
 
   // Late preview for check-in (the server trigger remains authoritative).
@@ -249,7 +249,7 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
           </p>
         )}
         {rec?.entry_method === "operator" && (
-          <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Today&apos;s attendance was recorded by the office.</p>
+          <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Your check-in today was recorded by the office.{rec.actual_out ? "" : " You can check out here when you leave."}</p>
         )}
 
         {showLateReason && (
