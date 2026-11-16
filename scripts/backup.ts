@@ -15,6 +15,7 @@
  * e.g. new login accounts).
  */
 import { config } from "dotenv";
+import { databaseUrl } from "./db-url";
 import postgres from "postgres";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -38,7 +39,7 @@ interface Backup {
 }
 
 async function main() {
-  const url = process.env.SUPABASE_DB_URL;
+  const url = databaseUrl();
   if (!url) throw new Error(`SUPABASE_DB_URL is not set in ${ENV_FILE}.`);
   const project = /postgres\.([a-z0-9]+):/.exec(url)?.[1] ?? "db";
   console.log(`Backup of project ${project} (from ${ENV_FILE}) — read only`);

@@ -11,6 +11,7 @@
  * own transaction: on error nothing from that file is kept and the run stops.
  */
 import { config } from "dotenv";
+import { databaseUrl, maskedUrl } from "./db-url";
 import postgres from "postgres";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -43,14 +44,14 @@ function fail(msg: string): never {
 }
 
 async function main() {
-  const url = process.env.SUPABASE_DB_URL;
+  const url = databaseUrl();
   if (!url) fail("SUPABASE_DB_URL is not set in .env.local (see the comment at the top of scripts/migrate.ts).");
   const statusOnly = process.argv.includes("--status");
   // Safety: a staging env file must never point at the production project.
   if (ENV_FILE.includes("staging") && url.includes(PRODUCTION_REF)) {
     fail(`${ENV_FILE} points at the PRODUCTION database. Aborting.`);
   }
-  console.log(`Target: ${url.replace(/\/\/([^:/]+):.*@/, "//$1:****@")}  (from ${ENV_FILE})`);
+  console.log(`Target: ${maskedUrl(url)}  (from ${ENV_FILE})`);
   const sql = postgres(url, { ssl: "require", max: 1, onnotice: () => undefined, prepare: false });
 
   try {

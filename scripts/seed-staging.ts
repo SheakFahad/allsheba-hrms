@@ -7,6 +7,7 @@
  * usernames / employees are left as they are. Prints the test logins.
  */
 import { config } from "dotenv";
+import { databaseUrl } from "./db-url";
 import postgres from "postgres";
 import { randomInt } from "node:crypto";
 
@@ -29,7 +30,7 @@ function password() {
 }
 
 async function main() {
-  const url = process.env.SUPABASE_DB_URL;
+  const url = databaseUrl();
   if (!url) fail("SUPABASE_DB_URL is not set in .env.staging.local.");
   if (url.includes(PRODUCTION_REF)) fail("This URL is the PRODUCTION database. Seeding is only allowed on staging.");
 
