@@ -48,7 +48,8 @@ export async function selfAttendance(input: unknown) {
     );
     const result = data as SelfAttendanceResult;
     if (result.ok) {
-      revalidatePath("/me");
+      // /me itself is refreshed by the page (router.refresh) after the reply arrives;
+      // revalidating it here as well left the button spinning on iPhone Safari.
       revalidatePath("/admin");
       revalidatePath("/admin/attendance");
     }

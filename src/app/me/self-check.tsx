@@ -122,6 +122,16 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     return () => clearInterval(id);
   }, [ctx.timezone]);
 
+  // Safety net (seen on iPhone Safari): if the saved record is already on screen,
+  // the request is finished — never leave the button spinning.
+  const recKey = `${rec?.actual_in ?? ""}|${rec?.actual_out ?? ""}`;
+  const seenKey = React.useRef(recKey);
+  React.useEffect(() => {
+    if (seenKey.current === recKey) return;
+    seenKey.current = recKey;
+    setStatus((s) => (s.kind === "busy" ? { kind: "idle" } : s));
+  }, [recKey]);
+
   const fail = (action: Kind, text: string, retry = true) => {
     setStatus({ kind: "error", action, text, retry });
     toast.error(text);
@@ -153,7 +163,7 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     const t1 = performance.now();
     let res: Awaited<ReturnType<typeof selfAttendance>>;
     try {
-      res = await selfAttendance({
+      const call = selfAttendance({
         kind: action,
         latitude: coords?.latitude ?? null,
         longitude: coords?.longitude ?? null,
@@ -161,7 +171,13 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
         late_reason: action === "check_in" ? lateReason : "",
         late_note: action === "check_in" ? lateNote : "",
       });
-    } catch {
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 25000));
+      res = await Promise.race([call, timeout]);
+    } catch (e) {
+      if ((e as Error)?.message === "timeout") {
+        router.refresh(); // it may have been saved — the refreshed page shows the record if so
+        return fail(action, "No reply from the server yet. Check the list below before trying again.", false);
+      }
       return fail(action, MSG.network);
     }
     const timing = `${locateMs !== null ? `Location ${(locateMs / 1000).toFixed(1)} s · ` : ""}Server ${((performance.now() - t1) / 1000).toFixed(1)} s`;
