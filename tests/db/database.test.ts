@@ -748,3 +748,44 @@ describe("employee portal: own profile, own leave, today's present list", () => 
     });
   });
 });
+
+describe("late grace for employee self check-in", () => {
+  let emp = "";
+  const insert = (method: string, minutesLate: number, reason: string | null = null) =>
+    db.query<{ status: string; late_minutes: number; grace_minutes: number }>(
+      `insert into attendance (employee_id, attendance_date, actual_in, status, entry_method, late_reason)
+       values ($1, public.local_today() - $2::int, (select start_time from shifts where is_default) + make_interval(mins => $3), 'present', $4, $5)
+       returning status, late_minutes, grace_minutes`,
+      [emp, minutesLate + 1, minutesLate, method, reason],
+    ).then((r) => r.rows[0]);
+
+  beforeAll(async () => {
+    await asUser(db, admin, async () => {
+      emp = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date, shift_id) values ('Grace Person', current_date - 90, (select id from shifts where is_default)) returning id",
+      )).rows[0].id;
+      await db.query("update shifts set grace_minutes = 0 where is_default");
+    });
+  });
+
+  it("is not late within 15 minutes for self check-in, late after that", async () => {
+    await asUser(db, admin, async () => {
+      expect(await insert("self_gps", 14)).toMatchObject({ status: "present", late_minutes: 0, grace_minutes: 15 });
+      expect(await insert("self_gps", 16, "traffic_jam")).toMatchObject({ status: "late", late_minutes: 16 });
+    });
+  });
+
+  it("keeps operator entries on the shift grace (unchanged behaviour)", async () => {
+    await asUser(db, admin, async () => {
+      expect(await insert("operator", 10, "traffic_jam")).toMatchObject({ status: "late", late_minutes: 10, grace_minutes: 0 });
+    });
+  });
+
+  it("uses the admin-configured self-service grace", async () => {
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set self_grace_minutes = 5 where id = 1");
+      expect(await insert("self", 6, "traffic_jam")).toMatchObject({ status: "late", grace_minutes: 5 });
+      await db.query("update company_settings set self_grace_minutes = 15 where id = 1");
+    });
+  });
+});

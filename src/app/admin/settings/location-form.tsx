@@ -34,6 +34,7 @@ export function LocationForm({ s }: { s: CompanySettings }) {
     office_longitude: s.office_longitude === null ? "" : String(s.office_longitude),
     office_radius_m: String(s.office_radius_m ?? 100),
     gps_max_accuracy_m: String(s.gps_max_accuracy_m ?? 50),
+    self_grace_minutes: String(s.self_grace_minutes ?? 15),
     gps_required: s.gps_required ?? true,
     self_service_enabled: s.self_service_enabled ?? true,
   });
@@ -115,6 +116,11 @@ export function LocationForm({ s }: { s: CompanySettings }) {
             <Field label="Longitude" htmlFor="o_lng"><Input id="o_lng" inputMode="decimal" value={v.office_longitude} onChange={(e) => setV({ ...v, office_longitude: e.target.value })} placeholder="90.407249" /></Field>
             <Field label="Allowed radius (m)" htmlFor="o_rad" hint="Default 100 m"><Input id="o_rad" type="number" min={10} max={5000} value={v.office_radius_m} onChange={(e) => setV({ ...v, office_radius_m: e.target.value })} /></Field>
             <Field label="Required accuracy (m)" htmlFor="o_acc" hint="Reject readings less precise than this"><Input id="o_acc" type="number" min={5} max={1000} value={v.gps_max_accuracy_m} onChange={(e) => setV({ ...v, gps_max_accuracy_m: e.target.value })} /></Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <Field label="Late after (minutes)" htmlFor="o_grace" hint="Employee self check-in is not late until this many minutes after the shift start">
+              <Input id="o_grace" type="number" min={0} max={120} value={v.self_grace_minutes} onChange={(e) => setV({ ...v, self_grace_minutes: e.target.value })} />
+            </Field>
           </div>
 
           <div className="flex justify-end border-t pt-4">

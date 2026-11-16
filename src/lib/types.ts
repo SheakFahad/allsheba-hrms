@@ -97,6 +97,8 @@ export interface CompanySettings {
   office_longitude: number | null;
   office_radius_m: number;
   gps_max_accuracy_m: number;
+  /** Employee self check-in: minutes after shift start before it counts as late. */
+  self_grace_minutes: number;
   gps_required: boolean;
   self_service_enabled: boolean;
   report_footer: string | null;

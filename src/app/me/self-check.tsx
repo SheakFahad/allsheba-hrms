@@ -113,6 +113,14 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
     !ctx.flexible && !!ctx.schedule.in &&
     timeToMinutes(nowHHMM(ctx.timezone)) - timeToMinutes(ctx.schedule.in) > ctx.schedule.grace;
   const showLateReason = canCheckIn && ctx.late_reason_required && (lateNow || needsReason);
+  const lateAfter = !ctx.flexible && ctx.schedule.in ? addMinutes(ctx.schedule.in, ctx.schedule.grace) : null;
+
+  // Live clock (display only — the recorded time always comes from the server).
+  const [clock, setClock] = React.useState(() => nowHHMM(ctx.timezone));
+  React.useEffect(() => {
+    const id = setInterval(() => setClock(nowHHMM(ctx.timezone)), 15000);
+    return () => clearInterval(id);
+  }, [ctx.timezone]);
 
   const fail = (action: Kind, text: string, retry = true) => {
     setStatus({ kind: "error", action, text, retry });
@@ -191,18 +199,39 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
           <div>
             <p className="text-sm font-semibold">Today</p>
             <p className="text-xs text-muted-foreground">
-              {ctx.flexible ? "Flexible schedule" : `Office hours ${formatTime12(ctx.schedule.in)} – ${formatTime12(ctx.schedule.out)}`}
+              {ctx.flexible ? "Flexible schedule" : `Your shift ${formatTime12(ctx.schedule.in)} – ${formatTime12(ctx.schedule.out)} · late after ${ctx.schedule.grace} min`}
               {ctx.holiday ? ` · Holiday: ${ctx.holiday}` : ctx.weekly_off ? " · Your weekly holiday" : ""}
             </p>
           </div>
           {rec ? <AttendanceBadge status={rec.status} /> : <span className="text-xs font-medium text-muted-foreground">Not checked in</span>}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Check in" value={rec?.actual_in ? formatTime12(rec.actual_in) : "—"} />
-          <Stat label="Check out" value={rec?.actual_out ? formatTime12(rec.actual_out) : "—"} />
-          <Stat label="Worked" value={rec?.work_minutes ? formatDuration(rec.work_minutes) : "—"} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TimeBox
+            icon={<LogIn className="size-4 text-brand" />}
+            title="Arrival"
+            rows={ctx.flexible ? [] : [
+              ["Scheduled in", formatTime12(ctx.schedule.in)],
+              ...(lateAfter ? [["Late after", formatTime12(lateAfter)] as [string, string]] : []),
+            ]}
+            actualLabel="Actual in"
+            actual={rec?.actual_in ? formatTime12(rec.actual_in) : null}
+            extra={rec?.late_minutes ? `${rec.late_minutes} min late` : null}
+          />
+          <TimeBox
+            icon={<LogOut className="size-4 text-brand" />}
+            title="Departure"
+            rows={ctx.flexible ? [] : [["Scheduled out", formatTime12(ctx.schedule.out)]]}
+            actualLabel="Actual out"
+            actual={rec?.actual_out ? formatTime12(rec.actual_out) : null}
+            extra={rec?.work_minutes ? `Worked ${formatDuration(rec.work_minutes)}` : null}
+          />
         </div>
+        {!rec?.actual_out && (
+          <p className="text-center text-xs text-muted-foreground">
+            Now <span className="tabular font-semibold text-foreground" suppressHydrationWarning>{formatTime12(clock)}</span> · the time is taken automatically from the server when you press the button — it cannot be typed or changed.
+          </p>
+        )}
         {rec?.entry_method === "operator" && (
           <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Today&apos;s attendance was recorded by the office.</p>
         )}
@@ -257,11 +286,35 @@ export function SelfCheck({ ctx }: { ctx: SelfContext }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/** Arrival / departure box, laid out like the operator's Quick Attendance form (read only). */
+function TimeBox({ icon, title, rows, actualLabel, actual, extra }: {
+  icon: React.ReactNode;
+  title: string;
+  rows: [string, string][];
+  actualLabel: string;
+  actual: string | null;
+  extra: string | null;
+}) {
   return (
-    <div className="rounded-lg bg-muted/60 px-2 py-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="tabular text-sm font-semibold">{value}</p>
+    <div className="grid gap-2 rounded-xl border p-3">
+      <p className="flex items-center gap-2 text-sm font-semibold">{icon} {title}</p>
+      {rows.map(([k, val]) => (
+        <div key={k} className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-1.5 text-sm">
+          <span className="text-xs text-muted-foreground">{k}</span>
+          <span className="tabular font-medium">{val}</span>
+        </div>
+      ))}
+      <div className="flex items-center justify-between rounded-lg border border-dashed px-3 py-1.5 text-sm">
+        <span className="text-xs text-muted-foreground">{actualLabel}</span>
+        <span className={cn("tabular font-semibold", !actual && "text-muted-foreground")}>{actual ?? "—"}</span>
+      </div>
+      {extra && <p className="text-right text-[11px] text-muted-foreground">{extra}</p>}
     </div>
   );
+}
+
+/** "HH:MM" + minutes → "HH:MM". */
+function addMinutes(hhmm: string, minutes: number) {
+  const t = (timeToMinutes(hhmm) + minutes) % (24 * 60);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }

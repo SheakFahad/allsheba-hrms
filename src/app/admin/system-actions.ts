@@ -173,6 +173,7 @@ const settingsSchemas = {
       office_longitude: z.union([z.literal(""), z.coerce.number().min(-180, "Longitude must be between -180 and 180").max(180, "Longitude must be between -180 and 180")]).transform((x) => (x === "" ? null : x)),
       office_radius_m: z.coerce.number().int().min(10, "Radius must be at least 10 m").max(5000),
       gps_max_accuracy_m: z.coerce.number().int().min(5).max(1000),
+      self_grace_minutes: z.coerce.number().int().min(0, "0–120 minutes").max(120, "0–120 minutes"),
       gps_required: bool,
       self_service_enabled: bool,
     })
