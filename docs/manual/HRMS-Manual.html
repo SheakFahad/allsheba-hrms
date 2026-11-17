@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>All Sheba HRMS — User Manual &amp; Technical Overview</title>
+<!--
+  Source of docs/manual/HRMS-Manual.pdf. Edit this file, then rebuild the PDF:
+    "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu --no-pdf-header-footer ^
+      --print-to-pdf="docs\manual\HRMS-Manual.pdf" "docs\manual\HRMS-Manual.html"
+-->
+<style>
+  @page { size: A4; margin: 13mm 14mm 13mm 14mm; }
+  :root { --brand: #1d6fb3; --ink: #14202e; --muted: #5b6776; --line: #d9e1ea; --soft: #f2f6fa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; color: var(--ink); font: 9.1pt/1.36 "Segoe UI", Arial, sans-serif; }
+  h1 { font-size: 20pt; margin: 0 0 2mm; letter-spacing: -.2px; }
+  h2 { font-size: 12pt; color: var(--brand); margin: 3.4mm 0 1.4mm; padding-bottom: 1mm; border-bottom: 1.5px solid var(--brand); }
+  h3 { font-size: 10.2pt; margin: 2.6mm 0 1mm; }
+  p { margin: 0 0 1.6mm; }
+  ul { margin: 0 0 1.6mm; padding-left: 4.5mm; }
+  li { margin: .3mm 0; }
+  code, .mono { font-family: Consolas, "Courier New", monospace; font-size: 8.6pt; background: var(--soft); padding: 0 1mm; border-radius: 1mm; }
+  table { width: 100%; border-collapse: collapse; margin: .8mm 0 1.6mm; font-size: 8.5pt; }
+  th, td { border: 1px solid var(--line); padding: .7mm 1.5mm; vertical-align: top; text-align: left; }
+  th { background: var(--soft); font-weight: 600; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .lead { color: var(--muted); font-size: 10pt; margin-bottom: 3mm; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .box { border: 1px solid var(--line); border-radius: 2mm; padding: 2mm 3mm; background: #fff; }
+  .note { border-left: 3px solid var(--brand); background: var(--soft); padding: 1.6mm 2.6mm; margin: 1.6mm 0 2mm; }
+  .warn { border-left-color: #c77700; background: #fdf6e8; }
+  .tree { font-family: Consolas, "Courier New", monospace; font-size: 8.3pt; line-height: 1.38; background: var(--soft); border-radius: 2mm; padding: 2mm 3mm; white-space: pre; margin: 0; }
+  .tree b { color: var(--brand); font-weight: 600; }
+  .tree i { color: var(--muted); font-style: normal; }
+  .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--brand); padding-bottom: 2mm; margin-bottom: 2mm; }
+  .tag { display: inline-block; border: 1px solid var(--brand); color: var(--brand); border-radius: 10px; padding: 0 2mm; font-size: 8pt; margin-right: 1mm; }
+  .small { font-size: 8.4pt; color: var(--muted); }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps li { counter-increment: s; padding-left: 6mm; position: relative; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: .2mm; width: 4.2mm; height: 4.2mm; border-radius: 50%; background: var(--brand); color: #fff; font-size: 7.5pt; text-align: center; line-height: 4.2mm; font-weight: 600; }
+  svg text { font-family: "Segoe UI", Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- ============================== PAGE 1 ============================== -->
+<section class="page">
+  <div class="header">
+    <div>
+      <h1>All Sheba HRMS</h1>
+      <div class="lead" style="margin:0">User manual &amp; technical overview — attendance, leave, payroll, expenses and reports</div>
+    </div>
+    <div class="small" style="text-align:right">All Sheba Limited<br>Version: November 2026</div>
+  </div>
+
+  <h2>1. What the software does</h2>
+  <p>A web-based Human Resource Management System that runs in any browser (computer or phone). It keeps the employee
+  register, daily attendance with late tracking, GPS-verified self check-in, leave, payroll, salary payments, daily
+  expenses with printable vouchers, and produces every report as Print, PDF, Excel or CSV.</p>
+
+  <table>
+    <tr><th style="width:23%">Address</th><td><b>https://allsheba-hrms.vercel.app</b> (live / production) &nbsp;·&nbsp; a separate <i>staging</i> copy with test data is used to try changes first</td></tr>
+    <tr><th>Who signs in</th><td>Everyone signs in with a <b>username + password</b> (no e-mail needed). The role decides which panel opens.</td></tr>
+  </table>
+
+  <h3>Three roles</h3>
+  <table>
+    <tr><th style="width:17%">Role</th><th style="width:17%">Opens</th><th>Can do</th></tr>
+    <tr><td><b>Administrator</b></td><td>Admin panel <code>/admin</code></td><td>Everything: employees, attendance (any date), corrections, leave approval, payroll, salary payments, expenses (confirm payments), reports, users, settings, audit log. Never restricted by location.</td></tr>
+    <tr><td><b>Entry operator</b><br><span class="small">(“user”)</span></td><td>Entry panel <code>/entry</code></td><td>Quick daily attendance for all employees, today’s overview, own entry history, correction requests, leave applications on behalf of staff, daily expenses <i>only if the admin allows it</i>. No salary, payroll, settings or personal data. No GPS needed.</td></tr>
+    <tr><td><b>Employee</b></td><td>Employee portal <code>/me</code></td><td>Own GPS check-in / check-out, own attendance history, today’s Present list, apply for / cancel own leave, view own profile (read only). Cannot see anyone else’s data, salary or settings.</td></tr>
+  </table>
+
+  <h2>2. Technology used</h2>
+  <table>
+    <tr><th style="width:23%">Part</th><th style="width:30%">Technology</th><th>Purpose</th></tr>
+    <tr><td>Programming language</td><td><b>TypeScript</b> (JavaScript with types)</td><td>All application code — pages, server logic, scripts, tests.</td></tr>
+    <tr><td>Database language</td><td><b>SQL / PL/pgSQL</b> (PostgreSQL)</td><td>Tables, business rules (triggers), security (row-level security), server functions.</td></tr>
+    <tr><td>Web framework</td><td><b>Next.js 16</b> + <b>React 19</b></td><td>Pages, server rendering, server actions (form saving), routing, the daily cron job.</td></tr>
+    <tr><td>Styling / UI</td><td>Tailwind CSS 4, shadcn/ui components, lucide icons</td><td>Layout, colours, dark mode, mobile layout.</td></tr>
+    <tr><td>Forms &amp; validation</td><td>React Hook Form, Zod</td><td>Every input is checked in the browser <i>and</i> again on the server.</td></tr>
+    <tr><td>Database &amp; login</td><td><b>Supabase</b> (PostgreSQL, Auth, Storage)</td><td>Data storage, user accounts, photos / documents.</td></tr>
+    <tr><td>Exports</td><td>jsPDF + autotable, ExcelJS, Recharts, Leaflet</td><td>PDF / Excel files, charts, office map (OpenStreetMap).</td></tr>
+    <tr><td>Hosting</td><td><b>Vercel</b> (region Tokyo, <code>hnd1</code>)</td><td>Runs the website; deploys automatically from GitHub.</td></tr>
+    <tr><td>Source code</td><td><b>GitHub</b> — repository <code>SheakFahad/allsheba-hrms</code> (private)</td><td>Version history; branch <code>main</code> = live site, branch <code>staging</code> = test site.</td></tr>
+    <tr><td>Tests</td><td>Vitest + PGlite (in-memory PostgreSQL)</td><td>74 automatic tests run every database rule and calculation.</td></tr>
+  </table>
+  <div class="note">Nothing needs to be installed on staff computers or phones — a browser is enough. The employee portal is designed for phones (GPS).</div>
+</section>
+
+<!-- ============================== PAGE 2 ============================== -->
+<section class="page">
+  <h2>3. How the system fits together</h2>
+  <svg viewBox="0 0 760 330" width="100%" role="img" aria-label="System architecture diagram">
+    <defs>
+      <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1d6fb3"/></marker>
+      <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a96a3"/></marker>
+    </defs>
+    <!-- users -->
+    <rect x="8" y="20" width="150" height="196" rx="10" fill="#f2f6fa" stroke="#d9e1ea"/>
+    <text x="83" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#14202e">Users (browser)</text>
+    <rect x="22" y="52" width="122" height="40" rx="7" fill="#fff" stroke="#1d6fb3"/><text x="83" y="70" text-anchor="middle" font-size="11.5" font-weight="600">Administrator</text><text x="83" y="84" text-anchor="middle" font-size="9.5" fill="#5b6776">/admin — computer</text>
+    <rect x="22" y="102" width="122" height="40" rx="7" fill="#fff" stroke="#1d6fb3"/><text x="83" y="120" text-anchor="middle" font-size="11.5" font-weight="600">Entry operator</text><text x="83" y="134" text-anchor="middle" font-size="9.5" fill="#5b6776">/entry — office PC</text>
+    <rect x="22" y="152" width="122" height="52" rx="7" fill="#fff" stroke="#1d6fb3"/><text x="83" y="170" text-anchor="middle" font-size="11.5" font-weight="600">Employee</text><text x="83" y="184" text-anchor="middle" font-size="9.5" fill="#5b6776">/me — phone + GPS</text><text x="83" y="197" text-anchor="middle" font-size="9.5" fill="#5b6776">location only on click</text>
+    <!-- vercel -->
+    <rect x="215" y="20" width="250" height="196" rx="10" fill="#fff" stroke="#14202e" stroke-width="1.5"/>
+    <text x="340" y="40" text-anchor="middle" font-size="13" font-weight="700">Vercel — Next.js app</text>
+    <text x="340" y="55" text-anchor="middle" font-size="9.5" fill="#5b6776">allsheba-hrms.vercel.app · region hnd1</text>
+    <rect x="229" y="64" width="222" height="30" rx="6" fill="#f2f6fa" stroke="#d9e1ea"/><text x="340" y="83" text-anchor="middle" font-size="10.5">proxy.ts — checks sign-in on every request</text>
+    <rect x="229" y="100" width="222" height="30" rx="6" fill="#f2f6fa" stroke="#d9e1ea"/><text x="340" y="119" text-anchor="middle" font-size="10.5">Pages (src/app) — admin · entry · me</text>
+    <rect x="229" y="136" width="222" height="30" rx="6" fill="#f2f6fa" stroke="#d9e1ea"/><text x="340" y="155" text-anchor="middle" font-size="10.5">Server actions — save / validate (Zod)</text>
+    <rect x="229" y="172" width="222" height="30" rx="6" fill="#f2f6fa" stroke="#d9e1ea"/><text x="340" y="191" text-anchor="middle" font-size="10.5">Cron 00:30 Dhaka — close yesterday</text>
+    <!-- supabase -->
+    <rect x="522" y="20" width="230" height="196" rx="10" fill="#fff" stroke="#3ecf8e" stroke-width="1.5"/>
+    <text x="637" y="40" text-anchor="middle" font-size="13" font-weight="700">Supabase</text>
+    <text x="637" y="55" text-anchor="middle" font-size="9.5" fill="#5b6776">production project mcenelqeuaffxqvszjph</text>
+    <rect x="536" y="64" width="202" height="30" rx="6" fill="#effaf4" stroke="#bfe8d2"/><text x="637" y="83" text-anchor="middle" font-size="10.5">Auth — usernames &amp; passwords</text>
+    <rect x="536" y="100" width="202" height="66" rx="6" fill="#effaf4" stroke="#bfe8d2"/><text x="637" y="118" text-anchor="middle" font-size="10.5" font-weight="600">PostgreSQL database</text><text x="637" y="133" text-anchor="middle" font-size="9.5">25 tables · triggers (late, payroll)</text><text x="637" y="146" text-anchor="middle" font-size="9.5">RPC functions (GPS check, leave)</text><text x="637" y="159" text-anchor="middle" font-size="9.5">Row-level security per role</text>
+    <rect x="536" y="172" width="202" height="30" rx="6" fill="#effaf4" stroke="#bfe8d2"/><text x="637" y="191" text-anchor="middle" font-size="10.5">Storage — logo, photos, documents</text>
+    <!-- arrows -->
+    <line x1="158" y1="118" x2="211" y2="118" stroke="#1d6fb3" stroke-width="2" marker-end="url(#a)"/><text x="185" y="111" text-anchor="middle" font-size="9" fill="#1d6fb3">HTTPS</text>
+    <line x1="465" y1="118" x2="518" y2="118" stroke="#1d6fb3" stroke-width="2" marker-end="url(#a)"/><text x="492" y="111" text-anchor="middle" font-size="9" fill="#1d6fb3">API</text>
+    <!-- deploy pipeline -->
+    <rect x="8" y="250" width="150" height="66" rx="10" fill="#f2f6fa" stroke="#d9e1ea"/><text x="83" y="272" text-anchor="middle" font-size="12" font-weight="700">Developer PC</text><text x="83" y="288" text-anchor="middle" font-size="9.5" fill="#5b6776">VS Code · npm scripts</text><text x="83" y="302" text-anchor="middle" font-size="9.5" fill="#5b6776">tests · migrations · backup</text>
+    <rect x="215" y="250" width="250" height="66" rx="10" fill="#fff" stroke="#14202e"/><text x="340" y="272" text-anchor="middle" font-size="12" font-weight="700">GitHub (private)</text><text x="340" y="288" text-anchor="middle" font-size="9.5" fill="#5b6776">branch staging → test site + staging DB</text><text x="340" y="302" text-anchor="middle" font-size="9.5" fill="#5b6776">branch main → live site (auto deploy)</text>
+    <line x1="158" y1="283" x2="211" y2="283" stroke="#8a96a3" stroke-width="2" marker-end="url(#g)"/><text x="185" y="276" text-anchor="middle" font-size="9" fill="#5b6776">git push</text>
+    <path d="M340 250 L340 220" stroke="#8a96a3" stroke-width="2" marker-end="url(#g)"/><text x="350" y="240" font-size="9" fill="#5b6776">build &amp; deploy</text>
+    <path d="M158 310 C 470 338, 700 318, 690 220" fill="none" stroke="#8a96a3" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#g)"/><text x="600" y="318" font-size="9" fill="#5b6776">npm run db:migrate (SQL)</text>
+  </svg>
+  <p class="small">Security is enforced in three places: the proxy (must be signed in), the server action (must have the right role), and the database itself (row-level security). Hiding a button is never the only protection.</p>
+
+  <h2>4. Database (Supabase PostgreSQL)</h2>
+  <table>
+    <tr><th style="width:24%">Area</th><th style="width:44%">Tables</th><th>Notes</th></tr>
+    <tr><td>Company &amp; setup</td><td><code>company_settings</code>, <code>departments</code>, <code>designations</code>, <code>shifts</code>, <code>holidays</code>, <code>office_location_history</code></td><td>One settings row: name, logo, timezone, weekly off, payroll rules, office GPS point &amp; radius, 15-min self check-in grace.</td></tr>
+    <tr><td>Employees</td><td><code>employees</code>, <code>employee_personal</code>, <code>employee_documents</code>, <code>employee_events</code>, <code>salary_structures</code></td><td>Employees are archived, never deleted. Personal data and salary are admin-only.</td></tr>
+    <tr><td>Attendance</td><td><code>attendance</code>, <code>attendance_corrections</code>, <code>attendance_geo_events</code></td><td>Late minutes are calculated by a database trigger. <code>entry_method</code> = operator / self_gps / self. Every GPS attempt is logged with distance &amp; accuracy.</td></tr>
+    <tr><td>Leave</td><td><code>leave_types</code>, <code>leave_balances</code>, <code>leave_requests</code></td><td>Days count only working days; overlapping requests are refused.</td></tr>
+    <tr><td>Payroll &amp; money</td><td><code>payroll_records</code>, <code>payroll_items</code>, <code>salary_payments</code>, <code>expenses</code>, <code>expense_categories</code></td><td>Finalized payroll cannot change. Only confirmed payments count as paid. Voucher numbers EXP-/SAL-YYYY-00001.</td></tr>
+    <tr><td>Users &amp; audit</td><td><code>profiles</code>, <code>audit_logs</code>, <code>app_migrations</code></td><td>Role, linked employee, forced password change. Every change is written to the audit log.</td></tr>
+  </table>
+  <div class="note">All database changes live as numbered files in <code>supabase/migrations/</code> (0001 → 0017). They only ever <b>add</b> — no DROP / DELETE / TRUNCATE of data. <code>supabase/setup.sql</code> is all of them combined, for creating a brand-new database.</div>
+</section>
+
+<!-- ============================== PAGE 3 ============================== -->
+<section class="page">
+  <h2>5. Where everything is in the code</h2>
+  <div class="cols">
+<pre class="tree"><b>allsheba-hrms/</b>
+├─ <b>src/app/</b>            <i>pages (each folder = URL)</i>
+│  ├─ (auth)/           <i>login, change-password</i>
+│  ├─ <b>admin/</b>           <i>Admin panel /admin</i>
+│  │  ├─ page.tsx       <i>dashboard</i>
+│  │  ├─ employees/     <i>list, add, profile</i>
+│  │  ├─ attendance/    <i>day view, history,</i>
+│  │  │                 <i>corrections, gps</i>
+│  │  ├─ leave/  payroll/  salary-payments/
+│  │  ├─ expenses/  finance/  vouchers/
+│  │  ├─ reports/  print-center/
+│  │  ├─ users/  settings/  holidays/
+│  │  ├─ departments/  audit-logs/
+│  │  └─ system-actions.ts <i>users, settings</i>
+│  ├─ <b>entry/</b>           <i>Operator panel /entry</i>
+│  ├─ <b>me/</b>              <i>Employee portal /me</i>
+│  │  └─ self-check.tsx <i>GPS check-in UI</i>
+│  └─ api/cron/close-attendance/
+├─ <b>src/components/</b>     <i>re-usable UI pieces</i>
+│  ├─ ui/               <i>buttons, inputs (shadcn)</i>
+│  ├─ layout/           <i>sidebar, nav-config.ts</i>
+│  ├─ attendance/ leave/ finance/
+│  ├─ reports/          <i>report viewer</i>
+│  └─ users/            <i>employee logins</i>
+└─ src/proxy.ts         <i>sign-in check</i></pre>
+<pre class="tree"><b>src/lib/</b>              <i>logic shared by pages</i>
+├─ auth.ts             <i>who is signed in, roles</i>
+├─ data.ts             <i>settings, branding, lists</i>
+├─ *-actions.ts        <i>save actions per area</i>
+├─ attendance-calc.ts  <i>late / worked minutes</i>
+├─ finance.ts          <i>amount in words (lakh)</i>
+├─ time.ts  format.ts  <i>dates, money</i>
+├─ validation.ts       <i>form rules (Zod)</i>
+├─ reports/            <i>24 report builders,</i>
+│                      <i>PDF / Excel / CSV export</i>
+└─ supabase/           <i>database connection</i>
+<b>supabase/</b>
+├─ migrations/         <i>0001 … 0017 SQL changes</i>
+└─ setup.sql           <i>all migrations combined</i>
+<b>scripts/</b>
+├─ migrate.ts          <i>apply SQL to a database</i>
+├─ backup.ts           <i>read-only backup + compare</i>
+├─ seed-staging.ts     <i>test data (staging only)</i>
+└─ provision.ts        <i>first admin accounts</i>
+<b>tests/</b>                <i>74 automatic tests</i>
+<b>public/brand/</b>         <i>logo files</i>
+vercel.json            <i>region, daily cron</i>
+.env.local             <i>secrets — never shared</i>
+<b>docs/</b>                 <i>setup, payroll, this manual</i></pre>
+  </div>
+
+  <h3>How to make a change (for a developer)</h3>
+  <ol class="steps">
+    <li>Open the folder in VS Code. Install once: <code>npm install</code>. Run locally: <code>npm run dev</code> → http://localhost:3000.</li>
+    <li>A page’s look → its <code>page.tsx</code> in <code>src/app/…</code>. A menu item → <code>src/components/layout/nav-config.ts</code>. Saving logic → the matching <code>*-actions.ts</code>. A report → <code>src/lib/reports/builders.ts</code> and <code>catalog.ts</code>.</li>
+    <li>A database change → add a <b>new</b> numbered file in <code>supabase/migrations/</code> (never edit an old one). Use <code>add column if not exists</code> / <code>create or replace function</code>; never drop data.</li>
+    <li>Check before sharing: <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm test</code>, <code>npm run build</code>. All must pass.</li>
+    <li>Commit to branch <b>staging</b> and push. Apply the migration to the staging database (<code>npm run db:migrate:staging</code>) and test on the staging site.</li>
+    <li>Only after the owner approves: back up production, migrate production, then merge <b>staging → main</b> (see section 9).</li>
+  </ol>
+  <div class="note warn"><b>Never</b> commit <code>.env.local</code> or <code>.env.staging.local</code>, and never paste keys or passwords into chat, screenshots or e-mail. If a key is exposed, create a new one in Supabase, update Vercel, then delete the old one.</div>
+
+  <h3>Key business rules (where they are enforced)</h3>
+  <table>
+    <tr><th style="width:36%">Rule</th><th>Where</th></tr>
+    <tr><td>Late = in-time after shift start + grace</td><td>Trigger <code>attendance_before_write</code>. Operator entries use the shift grace; employee self check-in uses at least <b>15 min</b> (Settings).</td></tr>
+    <tr><td>GPS check-in inside radius &amp; accuracy</td><td>Function <code>self_attendance()</code> — the server measures distance; the phone only sends raw readings.</td></tr>
+    <tr><td>Absence only by “closing” a day</td><td><code>close_attendance()</code> — manual button or the 00:30 cron.</td></tr>
+    <tr><td>Who sees what</td><td>Row-level security policies in migrations 0003, 0012, 0013, 0014.</td></tr>
+  </table>
+</section>
+
+<!-- ============================== PAGE 4 ============================== -->
+<section class="page">
+  <h2>6. User manual — Administrator</h2>
+  <table>
+    <tr><th style="width:24%">Menu</th><th>What it is for / how to use it</th></tr>
+    <tr><td><b>Dashboard</b></td><td>Today’s counts (present, late, absent, on leave), pending corrections and leave, charts.</td></tr>
+    <tr><td><b>Employee Management</b></td><td><b>Add employee</b> → ID (ASL-0001…) is created automatically. Open a profile for 7 tabs: overview, personal info, attendance, leave, salary history, documents, activity. Set the shift (no shift = flexible schedule) and weekly holiday. <b>Archive</b> instead of delete. <b>Create login account</b> gives the employee a sign-in.</td></tr>
+    <tr><td><b>Departments</b></td><td>Departments and designations used in forms and reports.</td></tr>
+    <tr><td><b>Attendance Management</b></td><td>Pick a date → every employee with in / out, late minutes, reason, status. Badges: <span class="tag">GPS ✓</span> employee checked in on the phone, <span class="tag">Operator</span> recorded by the office. <b>Record / Edit</b> any day (a reason is required), <b>Close</b> a day or a range (marks the rest Absent / Leave / Holiday / Weekly off), Export / Print.</td></tr>
+    <tr><td><b>Attendance History</b></td><td>Filter by employee, date range, status; summary and charts.</td></tr>
+    <tr><td><b>Corrections</b></td><td>Approve or reject correction requests sent by the operator.</td></tr>
+    <tr><td><b>GPS Check-ins</b></td><td>Every self check-in / check-out attempt with distance, accuracy and result (accepted, outside radius, low accuracy).</td></tr>
+    <tr><td><b>Leave Management</b></td><td>Approve / reject requests (from operator or employees), balances, calendar, leave types.</td></tr>
+    <tr><td><b>Holidays &amp; Shifts</b></td><td>Public holidays; shifts with start / end time and <b>grace minutes</b> (late tolerance for office entries).</td></tr>
+    <tr><td><b>Payroll Management</b></td><td>Generate a month → review → adjust → <b>Finalize</b> (locked). Payslips. Deductions only if enabled in Settings.</td></tr>
+    <tr><td><b>Salary Payments</b></td><td>Record actual payments (full / partial), confirm, print two-copy A4 voucher; employee-wise paid / partial / pending.</td></tr>
+    <tr><td><b>Expenses</b></td><td>Daily and monthly expenses with categories; <b>Confirm</b> to count as paid; print voucher; <b>Blank voucher</b> to fill by hand.</td></tr>
+    <tr><td><b>Cost &amp; Expense Report</b></td><td>Total cost = confirmed expenses + confirmed salary payments, with filters.</td></tr>
+    <tr><td><b>Reports / Print &amp; PDF Center</b></td><td>24 report templates (daily, monthly, yearly, late, absence, leave, payroll, cost, employee profile…). Each opens a preview with <b>Print, PDF, Excel, CSV</b>, column choice and sorting.</td></tr>
+    <tr><td><b>User Management</b></td><td>Admin / operator / employee accounts, <b>Reset password</b>, deactivate, allow an operator to record expenses. <b>Employee login accounts</b>: create logins for many employees at once — username = Employee ID (e.g. <code>asl-0005</code>), first password <code>123456</code>.</td></tr>
+    <tr><td><b>Audit Logs</b></td><td>Who changed what and when (read only).</td></tr>
+    <tr><td><b>Company Settings</b></td><td>Name, logo, address, timezone, weekly off, late-reason rules, payroll options, report footer. <b>Office location</b>: map pin, allowed radius (100 m), required GPS accuracy (50 m), <b>Late after</b> for self check-in (15 min), GPS on / off — every change is kept in a history.</td></tr>
+  </table>
+
+  <div class="cols">
+    <div>
+      <h2>7. Entry operator</h2>
+      <ul>
+        <li><b>Quick Attendance</b> — choose date &amp; employee, status, press <b>Now</b> for in / out time, late reason if late, <b>Save</b>.</li>
+        <li><b>Today’s Overview</b> — who is recorded, present, late, not recorded.</li>
+        <li><b>Entry History</b> — own entries; edit within the allowed window.</li>
+        <li><b>Correction Requests</b> — ask the admin to fix an older record.</li>
+        <li><b>Leave Applications</b> — apply on behalf of an employee (admin approves).</li>
+        <li><b>Daily Expenses</b> — only if the admin enabled it; cannot confirm payment.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>8. Employee (phone)</h2>
+      <ul>
+        <li>First sign-in: username = Employee ID, password <code>123456</code> → must choose an own password (8+ characters, letters and numbers).</li>
+        <li><b>Check In / Check Out</b> — be inside the office, allow location, choose a late reason if asked, press the button. Time comes from the server. Works after an office check-in too.</li>
+        <li><b>Attendance History</b>, <b>Present Today</b>, <b>My Leave</b> (apply / cancel pending, balances), <b>My Profile</b> (read only).</li>
+        <li>Use a phone: computer location can be ±1500 m and is refused.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PAGE 5 ============================== -->
+<section class="page">
+  <h2>9. How the site is made live (deployment)</h2>
+  <table>
+    <tr><th style="width:18%"></th><th style="width:41%">Staging (test)</th><th>Production (live)</th></tr>
+    <tr><td>Git branch</td><td><code>staging</code></td><td><code>main</code></td></tr>
+    <tr><td>Website</td><td>allsheba-hrms-git-staging-…vercel.app (Vercel login required)</td><td><b>allsheba-hrms.vercel.app</b></td></tr>
+    <tr><td>Database</td><td>Supabase project <code>gfpgdefvubipduiapkge</code> — test data only</td><td>Supabase project <code>mcenelqeuaffxqvszjph</code> — real data</td></tr>
+    <tr><td>Secrets file</td><td><code>.env.staging.local</code></td><td><code>.env.local</code></td></tr>
+    <tr><td>Migrate command</td><td><code>npm run db:migrate:staging</code></td><td><code>npm run db:migrate</code></td></tr>
+  </table>
+
+  <h3>Release checklist (staging → production)</h3>
+  <ol class="steps">
+    <li>All checks pass locally (typecheck, lint, 74 tests, build). Push to <code>staging</code>; Vercel builds the test site automatically.</li>
+    <li>Apply new migrations to the staging database and test with the staging accounts.</li>
+    <li>Owner approves in writing.</li>
+    <li><b>Back up production</b>: <code>npm run db:backup</code> → <code>backups/&lt;project&gt;-&lt;time&gt;.json</code> (read only, verified after writing; the folder is never committed).</li>
+    <li>Apply migrations: <code>npm run db:migrate</code>. Each file runs in its own transaction — on any error nothing from that file is kept.</li>
+    <li><b>Preservation report</b>: <code>npm run db:backup -- --compare backups/&lt;earlier file&gt;.json</code> → every earlier row must be present and unchanged.</li>
+    <li>Merge <code>staging</code> into <code>main</code> and push → Vercel deploys the live site in about 2 minutes.</li>
+    <li>If anything is wrong: Vercel → Deployments → previous production deployment → <b>Instant Rollback</b>. Migrations only add things, so the older code keeps working.</li>
+  </ol>
+
+  <h3>Settings that live outside the code</h3>
+  <table>
+    <tr><th style="width:33%">Where</th><th>What</th></tr>
+    <tr><td>Vercel → Environment Variables</td><td><code>SUPABASE_SERVICE_ROLE_KEY</code> (Secret; one value for Production, a different one for Preview → staging) — needed to create logins and reset passwords. Staging also has its own <code>NEXT_PUBLIC_SUPABASE_URL</code> / <code>…ANON_KEY</code>. Optional <code>CRON_SECRET</code>.</td></tr>
+    <tr><td>Vercel → Deployment Protection</td><td>“Require Log In” keeps the staging site private (does not affect the live site).</td></tr>
+    <tr><td>Supabase → Project Settings</td><td>API keys (create / delete), database password (Reset), Authentication (sign-ups disabled).</td></tr>
+    <tr><td><code>vercel.json</code></td><td>Region <code>hnd1</code>; cron <code>/api/cron/close-attendance</code> at 18:30 UTC = 00:30 Dhaka.</td></tr>
+  </table>
+
+  <h3>Day-to-day tips &amp; troubleshooting</h3>
+  <table>
+    <tr><th style="width:36%">Situation</th><th>What to do</th></tr>
+    <tr><td>Employee forgot the password</td><td>User Management → Reset password → <code>123456</code>; they choose a new one at sign-in.</td></tr>
+    <tr><td>“Outside the office location” / “accuracy insufficient”</td><td>Use a phone inside the office, location on, near a window. Check the pin and radius in Company Settings → Office location.</td></tr>
+    <tr><td>New employee joins</td><td>Add employee → set shift &amp; weekly off → profile → <b>Create login account</b>.</td></tr>
+    <tr><td>Office-recorded time is wrong</td><td>Admin: Attendance Management → Edit (reason required). Operator: Correction request.</td></tr>
+    <tr><td>Office entries should also get 15 min</td><td>Holidays &amp; Shifts → shift → Grace minutes = 15.</td></tr>
+    <tr><td>Change the logo, name or report footer</td><td>Company Settings (no code change needed).</td></tr>
+  </table>
+  <p class="small" style="margin-top:3mm">Further documents in the repository: <code>README.md</code>, <code>DEVELOPMENT_STATUS.md</code>, and in <code>docs/</code>: <code>SETUP.md</code>, <code>DEPLOYMENT.md</code>, <code>PAYROLL.md</code> (payroll formula), <code>ARCHITECTURE.md</code>. This manual’s source: <code>docs/manual/HRMS-Manual.html</code>.</p>
+</section>
+
+</body>
+</html>
