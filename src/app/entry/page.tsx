@@ -10,6 +10,7 @@ import { DayList } from "@/components/attendance/day-list";
 import { requirePageRole } from "@/lib/auth";
 import { getActiveEmployees, getSettings, getShifts, toEmployeeOption } from "@/lib/data";
 import { getDayOverview } from "@/lib/day-overview";
+import { StaffGpsDialog } from "@/components/attendance/staff-gps-dialog";
 import { addDays, formatDate, todayISO, weekdayName } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Quick Attendance" };
@@ -27,6 +28,7 @@ export default async function EntryHome() {
       <PageHeader
         title="Quick Attendance"
         description={`Welcome, ${user.fullName} · ${weekdayName(today)}, ${formatDate(today)}`}
+        actions={<StaffGpsDialog employees={options} maxAccuracy={settings.gps_max_accuracy_m} />}
       />
       {(overview.holidayName || overview.isWeeklyOff) && (
         <div className="mb-5 rounded-lg border border-info/20 bg-info-soft px-4 py-3 text-sm text-info">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { CorrectionsTable, type CorrectionRow } from "@/components/attendance/corrections-table";
+import { DeleteCorrectionButton } from "@/components/attendance/delete-correction-button";
 import { requirePageRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,7 +25,7 @@ export default async function EntryCorrectionsPage() {
         description="Requests you have sent. To create one, open Entry History and choose “Request correction” on a record."
       />
       <Card className="gap-0 py-0">
-        <CorrectionsTable rows={(data ?? []) as CorrectionRow[]} users={new Map([[user.id, user.username]])} />
+        <CorrectionsTable rows={(data ?? []) as CorrectionRow[]} users={new Map([[user.id, user.username]])} actions={(r) => <DeleteCorrectionButton id={r.id} />} />
       </Card>
     </>
   );

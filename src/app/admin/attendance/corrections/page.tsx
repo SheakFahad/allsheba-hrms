@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveEmployees } from "@/lib/data";
 import { pageParams, param } from "@/lib/params";
 import { ReviewButtons } from "../attendance-controls";
+import { DeleteCorrectionButton } from "@/components/attendance/delete-correction-button";
 
 export const metadata: Metadata = { title: "Attendance Corrections" };
 
@@ -46,7 +47,12 @@ export default async function CorrectionsPage({ searchParams }: PageProps<"/admi
         <CorrectionsTable
           rows={(data ?? []) as CorrectionRow[]}
           users={users}
-          actions={tab === "pending" ? (r) => <ReviewButtons id={r.id} /> : undefined}
+          actions={(r) => (
+            <div className="flex justify-end gap-1">
+              {tab === "pending" && <ReviewButtons id={r.id} />}
+              <DeleteCorrectionButton id={r.id} />
+            </div>
+          )}
         />
         <Pagination page={page} pageSize={pageSize} total={count ?? 0} />
       </Card>

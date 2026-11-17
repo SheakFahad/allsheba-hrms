@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { requirePageRole } from "@/lib/auth";
 import { getActiveEmployees, getSettings, getShifts, toEmployeeOption } from "@/lib/data";
 import { getDayOverview } from "@/lib/day-overview";
+import { StaffGpsDialog } from "@/components/attendance/staff-gps-dialog";
 import { LATE_REASON_LABELS } from "@/lib/constants";
 import { isISODate, param } from "@/lib/params";
 import { formatDate, formatDuration, formatTime12, todayISO, weekdayName } from "@/lib/time";
@@ -46,6 +47,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
             <ExportButton type="daily_attendance" params={{ date }} />
             <CloseRangeDialog today={today} />
             <CloseDayButton date={date} notRecorded={c.notRecorded} />
+            <StaffGpsDialog employees={options} maxAccuracy={settings.gps_max_accuracy_m} />
             <AdminAttendanceDialog {...dialogProps} />
           </>
         }

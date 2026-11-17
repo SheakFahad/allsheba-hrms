@@ -817,3 +817,75 @@ describe("self check-out after an office-recorded check-in", () => {
     expect(a.entry_method).toBe("operator");
   });
 });
+
+describe("GPS attendance recorded by the office, and deleting corrections", () => {
+  const OFFICE = { lat: 23.780887, lng: 90.407249 };
+  const NEAR = { lat: 23.7812, lng: 90.4074 };
+  const FAR = { lat: 23.79, lng: 90.407249 };
+  let emp = "";
+  const call = (kind: string, loc: { lat: number; lng: number }, acc = 10) =>
+    db.query<{ r: Record<string, unknown> }>(
+      "select public.staff_gps_attendance($1, $2, $3, $4, $5, 'traffic_jam', null) as r",
+      [emp, kind, loc.lat, loc.lng, acc],
+    ).then((x) => x.rows[0].r);
+
+  beforeAll(async () => {
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set office_latitude = $1, office_longitude = $2, office_radius_m = 100, gps_max_accuracy_m = 50 where id = 1", [OFFICE.lat, OFFICE.lng]);
+      emp = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date, shift_id) values ('Forgot Person', current_date - 90, (select id from shifts where is_default)) returning id",
+      )).rows[0].id;
+    });
+  });
+
+  it("refuses when the operator is outside the office", async () => {
+    await asUser(db, entry, async () => {
+      expect(await call("check_in", FAR)).toMatchObject({ ok: false, result: "outside_radius" });
+    });
+  });
+
+  it("records a GPS-verified check-in inside the office, keeping who recorded it", async () => {
+    await asUser(db, entry, async () => {
+      expect(await call("check_in", NEAR)).toMatchObject({ ok: true, result: "accepted", gps_verified: true });
+      expect(await call("check_in", NEAR)).toMatchObject({ ok: false, result: "duplicate" });
+    });
+    const a = (await db.query<{ entry_method: string; entered_by: string }>("select entry_method, entered_by from attendance where employee_id = $1", [emp])).rows[0];
+    expect(a.entry_method).toBe("self_gps");
+    expect(a.entered_by).toBe(entry);
+    const ev = (await db.query<{ user_id: string }>("select user_id from attendance_geo_events where employee_id = $1 and result = 'accepted'", [emp])).rows[0];
+    expect(ev.user_id).toBe(entry);
+  });
+
+  it("is not available to employees", async () => {
+    const u = (await db.query<{ id: string }>("select id from profiles where role = 'employee' limit 1")).rows[0].id;
+    await asUser(db, u, async () => {
+      await expect(call("check_out", NEAR)).rejects.toThrow(/administrator or entry operator/);
+    });
+  });
+
+  it("lets the operator delete own correction requests (logged), but not others'", async () => {
+    let own = "";
+    let other = "";
+    await asUser(db, entry, async () => {
+      own = (await db.query<{ id: string }>(
+        "insert into attendance_corrections (attendance_id, employee_id, attendance_date, kind, status, reason, proposed_data) values ((select id from attendance where employee_id = $1), $1, current_date, 'request', 'pending', 'wrong time', '{}') returning id",
+        [emp],
+      )).rows[0].id;
+    });
+    await asService(db, async () => {
+      other = (await db.query<{ id: string }>(
+        "insert into attendance_corrections (employee_id, attendance_date, kind, status, reason, requested_by) values ($1, current_date, 'edit', 'applied', 'someone else', $2) returning id",
+        [emp, admin],
+      )).rows[0].id;
+    });
+    await asUser(db, entry, async () => {
+      expect((await db.query("delete from attendance_corrections where id = $1", [other])).affectedRows).toBe(0);
+      expect((await db.query("delete from attendance_corrections where id = $1", [own])).affectedRows).toBe(1);
+    });
+    const log = await db.query("select * from audit_logs where entity = 'attendance_corrections' and entity_id = $1 and action = 'delete'", [own]);
+    expect(log.rows.length).toBe(1);
+    await asUser(db, admin, async () => {
+      expect((await db.query("delete from attendance_corrections where id = $1", [other])).affectedRows).toBe(1);
+    });
+  });
+});

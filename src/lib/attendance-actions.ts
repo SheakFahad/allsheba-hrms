@@ -151,3 +151,52 @@ export async function closeAttendance(input: unknown) {
     return { ok: true as const, message: n === 0 ? "Nothing to close — every employee already has a record." : `Attendance closed: ${n} record(s) generated` };
   });
 }
+
+/* ---------------- GPS check-in / check-out recorded by the office ---------------- */
+
+const staffGpsSchema = z.object({
+  employee_id: uuid,
+  kind: z.enum(["check_in", "check_out"]),
+  // Raw readings from the operator's own device; the server decides.
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracy: z.number().min(0).max(100000),
+  late_reason: z.union([z.enum(LATE_REASONS), z.literal("")]).optional(),
+  late_note: z.string().trim().max(500).optional(),
+});
+
+/** Admin or entry operator, inside the office, records an employee's check-in / check-out (GPS-verified). */
+export async function staffGpsAttendance(input: unknown) {
+  return runAction(staffGpsSchema, input, async (v) => {
+    await assertRole("admin", "entry");
+    const supabase = await createClient();
+    const { data } = check(
+      await supabase.rpc("staff_gps_attendance", {
+        p_employee: v.employee_id,
+        p_kind: v.kind,
+        p_lat: v.latitude,
+        p_lng: v.longitude,
+        p_accuracy: v.accuracy,
+        p_late_reason: v.late_reason || null,
+        p_late_note: v.late_note || null,
+      }),
+    );
+    const r = data as { ok: boolean; result: string; message: string; time: string | null; late_minutes: number | null };
+    if (r.ok) revalidateAttendance();
+    return r;
+  });
+}
+
+/** Delete a correction record (admin: any; operator: own requests). Logged in the audit log by a trigger. */
+export async function deleteCorrection(input: unknown) {
+  return runAction(z.object({ id: uuid }), input, async ({ id }) => {
+    await assertRole("admin", "entry");
+    const supabase = await createClient();
+    const { data } = check(await supabase.from("attendance_corrections").delete().eq("id", id).select("id"));
+    if (!data?.length) throw new ActionError("This record could not be deleted.");
+    revalidatePath("/admin/attendance/corrections");
+    revalidatePath("/entry/corrections");
+    revalidatePath("/admin");
+    return { ok: true as const, message: "Correction deleted" };
+  });
+}

@@ -68,7 +68,7 @@ type Status =
  * soon as the required accuracy is reached, then stops listening. No background
  * tracking and no fabricated coordinates.
  */
-function readLocation(requiredAccuracy: number, maxWaitMs = 10000): Promise<GeolocationCoordinates> {
+export function readLocation(requiredAccuracy: number, maxWaitMs = 10000): Promise<GeolocationCoordinates> {
   return new Promise((resolve, reject) => {
     let best: GeolocationCoordinates | null = null;
     let settled = false;
