@@ -13,6 +13,7 @@ import { calculateAttendance } from "@/lib/attendance-calc";
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUSES, LATE_REASON_LABELS, LATE_REASONS } from "@/lib/constants";
 import { dayOfWeek, formatDuration, formatTime12, nowHHMM, toHHMM, weekdayName } from "@/lib/time";
 import { lookupAttendance, saveAttendance } from "@/lib/attendance-actions";
+import { readLocation } from "@/app/me/self-check";
 import type { Attendance, AttendanceStatus, LateReason, Shift } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,19 @@ interface Policy {
   flexibleSchedule?: boolean;
   minDate?: string;
   maxDate: string;
+  /** When set, the recorder's own location is read on Save; inside the office the record is GPS-verified. */
+  gpsMaxAccuracy?: number;
+}
+
+/** Best effort: the recorder's location, or null (saving never waits on it to fail). */
+async function recorderLocation(maxAccuracy: number) {
+  if (typeof window === "undefined" || !window.isSecureContext || !("geolocation" in navigator)) return null;
+  try {
+    const c = await readLocation(maxAccuracy, 8000);
+    return { latitude: c.latitude, longitude: c.longitude, accuracy: c.accuracy };
+  } catch {
+    return null;
+  }
 }
 
 const EMPTY = {
@@ -216,7 +230,9 @@ export function AttendanceForm({
     ev.preventDefault();
     if (!validate()) return;
     startTransition(async () => {
+      const gps = policy.gpsMaxAccuracy && needsTimes && v.actual_in ? await recorderLocation(policy.gpsMaxAccuracy) : null;
       const res = await saveAttendance({
+        gps,
         id: v.id || undefined,
         employee_id: employeeId,
         attendance_date: date,

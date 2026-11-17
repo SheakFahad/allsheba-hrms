@@ -889,3 +889,52 @@ describe("GPS attendance recorded by the office, and deleting corrections", () =
     });
   });
 });
+
+describe("manual entry by the office inside the office counts as GPS", () => {
+  const OFFICE = { lat: 23.780887, lng: 90.407249 };
+  const NEAR = { lat: 23.7812, lng: 90.4074 };
+  const FAR = { lat: 23.79, lng: 90.407249 };
+  let emp = "";
+  let att = "";
+  beforeAll(async () => {
+    await asUser(db, admin, async () => {
+      await db.query("update company_settings set office_latitude = $1, office_longitude = $2, office_radius_m = 100, gps_max_accuracy_m = 50 where id = 1", [OFFICE.lat, OFFICE.lng]);
+      emp = (await db.query<{ id: string }>(
+        "insert into employees (full_name, joining_date, shift_id) values ('Manual Gps', current_date - 90, (select id from shifts where is_default)) returning id",
+      )).rows[0].id;
+    });
+    await asUser(db, entry, async () => {
+      att = (await db.query<{ id: string }>(
+        "insert into attendance (employee_id, attendance_date, actual_in, status) values ($1, public.local_today(), '09:55', 'present') returning id",
+        [emp],
+      )).rows[0].id;
+    });
+  });
+  const mark = (loc: { lat: number; lng: number }, acc = 10) =>
+    db.query<{ r: Record<string, unknown> }>("select public.staff_mark_gps($1, $2, $3, $4) as r", [att, loc.lat, loc.lng, acc]).then((x) => x.rows[0].r);
+  const method = async () => (await db.query<{ m: string }>("select entry_method m from attendance where id = $1", [att])).rows[0].m;
+
+  it("stays 'operator' when the recorder is outside the office", async () => {
+    await asUser(db, entry, async () => expect(await mark(FAR)).toMatchObject({ ok: false, result: "outside_radius" }));
+    expect(await method()).toBe("operator");
+  });
+
+  it("becomes GPS-verified when the recorder is inside, and the operator can still edit it", async () => {
+    await asUser(db, entry, async () => {
+      expect(await mark(NEAR)).toMatchObject({ ok: true, result: "accepted" });
+      expect((await db.query("update attendance set notes = 'ok' where id = $1", [att])).affectedRows).toBe(1);
+    });
+    expect(await method()).toBe("self_gps");
+    const ev = (await db.query<{ user_id: string }>("select user_id from attendance_geo_events where attendance_id = $1", [att])).rows[0];
+    expect(ev.user_id).toBe(entry);
+  });
+
+  it("is downgraded again if re-saved from outside the office; employees cannot call it", async () => {
+    await asUser(db, entry, async () => expect(await mark(FAR)).toMatchObject({ ok: false }));
+    expect(await method()).toBe("operator");
+    const u = (await db.query<{ id: string }>("select id from profiles where role = 'employee' limit 1")).rows[0].id;
+    await asUser(db, u, async () => {
+      await expect(mark(NEAR)).rejects.toThrow(/administrator or entry operator/);
+    });
+  });
+});

@@ -59,6 +59,7 @@ export default async function EntryHome() {
                 flexibleSchedule: settings.flexible_schedule_unassigned ?? true,
                 minDate: addDays(today, -settings.entry_backdate_days),
                 maxDate: today,
+                gpsMaxAccuracy: settings.gps_max_accuracy_m,
               }}
             />
           </CardContent>

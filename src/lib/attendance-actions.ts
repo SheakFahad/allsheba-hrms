@@ -27,8 +27,31 @@ export async function lookupAttendance(input: unknown) {
   });
 }
 
+const gpsReading = z
+  .object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180), accuracy: z.number().min(0).max(100000) })
+  .nullable()
+  .optional();
+
+/**
+ * After a manual save: if the recorder's device was inside the office, the record
+ * is GPS-verified (server-side check in staff_mark_gps). Returns a note for the toast.
+ */
+async function verifyRecorderLocation(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  attendanceId: string,
+  gps: z.infer<typeof gpsReading>,
+): Promise<string> {
+  if (!gps) return " · not GPS-verified (location unavailable)";
+  const { data, error } = await supabase.rpc("staff_mark_gps", {
+    p_attendance: attendanceId, p_lat: gps.latitude, p_lng: gps.longitude, p_accuracy: gps.accuracy,
+  });
+  if (error) return " · not GPS-verified";
+  const r = data as { ok: boolean; message: string };
+  return r.ok ? " · GPS ✓" : ` · not GPS-verified: ${r.message}`;
+}
+
 export async function saveAttendance(input: unknown) {
-  return runAction(attendanceSchema, input, async (v) => {
+  return runAction(attendanceSchema.and(z.object({ gps: gpsReading })), input, async ({ gps, ...v }) => {
     const user = await assertRole("admin", "entry");
     const supabase = await createClient();
     const payload = {
@@ -66,13 +89,17 @@ export async function saveAttendance(input: unknown) {
             : "Attendance record not found.",
         );
       }
+      const note = v.actual_in ? await verifyRecorderLocation(supabase, v.id, gps) : "";
       revalidateAttendance();
-      return { ok: true as const, message: "Attendance updated" };
+      return { ok: true as const, message: `Attendance updated${note}` };
     }
 
-    check(await supabase.from("attendance").insert({ ...payload, source: user.role === "admin" ? "admin" : "entry" }));
+    const { data: created } = check(
+      await supabase.from("attendance").insert({ ...payload, source: user.role === "admin" ? "admin" : "entry" }).select("id").single(),
+    );
+    const note = v.actual_in && created ? await verifyRecorderLocation(supabase, created.id as string, gps) : "";
     revalidateAttendance();
-    return { ok: true as const, message: "Attendance saved" };
+    return { ok: true as const, message: `Attendance saved${note}` };
   });
 }
 

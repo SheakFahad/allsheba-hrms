@@ -23,6 +23,7 @@ export function AdminAttendanceDialog({
   today,
   employeeId,
   record,
+  gpsMaxAccuracy,
 }: {
   employees: FormEmployee[];
   shifts: Shift[];
@@ -34,6 +35,7 @@ export function AdminAttendanceDialog({
   today: string;
   employeeId?: string;
   record?: Attendance | null;
+  gpsMaxAccuracy?: number;
 }) {
   const [open, setOpen] = React.useState(false);
   const isEdit = !!record;
@@ -64,7 +66,7 @@ export function AdminAttendanceDialog({
             initialDate={record?.attendance_date ?? date}
             initialEmployeeId={record?.employee_id ?? employeeId}
             initialRecord={isEdit ? record : undefined}
-            policy={{ timezone, lateReasonRequired, noteRequiredForOther, flexibleSchedule, maxDate: today }}
+            policy={{ timezone, lateReasonRequired, noteRequiredForOther, flexibleSchedule, maxDate: today, gpsMaxAccuracy }}
             onSaved={() => setOpen(false)}
           />
         )}

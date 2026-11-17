@@ -35,6 +35,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps<"/
     employees: options, shifts, timezone: settings.timezone, today, date,
     lateReasonRequired: settings.late_reason_required, noteRequiredForOther: settings.late_note_required_for_other,
     flexibleSchedule: settings.flexible_schedule_unassigned ?? true,
+    gpsMaxAccuracy: settings.gps_max_accuracy_m,
   };
 
   return (
